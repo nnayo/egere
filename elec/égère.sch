@@ -1,0 +1,481 @@
+EESchema Schematic File Version 2  date mar. 16 oct. 2012 17:52:19 CEST
+LIBS:power
+LIBS:device
+LIBS:transistors
+LIBS:conn
+LIBS:linear
+LIBS:regul
+LIBS:74xx
+LIBS:cmos4000
+LIBS:adc-dac
+LIBS:memory
+LIBS:xilinx
+LIBS:special
+LIBS:microcontrollers
+LIBS:dsp
+LIBS:microchip
+LIBS:analog_switches
+LIBS:motorola
+LIBS:texas
+LIBS:intel
+LIBS:audio
+LIBS:interface
+LIBS:digital-audio
+LIBS:philips
+LIBS:display
+LIBS:cypress
+LIBS:siliconi
+LIBS:opto
+LIBS:atmel
+LIBS:contrib
+LIBS:valves
+LIBS:égère-cache
+EELAYER 25  0
+EELAYER END
+$Descr A4 11700 8267
+encoding utf-8
+Sheet 1 1
+Title ""
+Date "16 oct 2012"
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+Wire Wire Line
+	6000 1800 6000 1850
+Wire Wire Line
+	6000 1850 4450 1850
+Wire Wire Line
+	5900 1800 5900 1950
+Wire Wire Line
+	5800 1800 5800 3050
+Wire Wire Line
+	5800 3050 3000 3050
+Wire Notes Line
+	2400 3950 3200 3950
+Wire Notes Line
+	3200 3950 3200 3400
+Wire Notes Line
+	3200 3400 2400 3400
+Connection ~ 5200 4150
+Wire Wire Line
+	5200 4150 5200 3450
+Wire Wire Line
+	5200 3450 4600 3450
+Wire Notes Line
+	5800 5100 5800 4250
+Wire Notes Line
+	5800 4250 5150 4250
+Wire Notes Line
+	5150 4250 5150 5100
+Wire Notes Line
+	7650 2350 5550 2350
+Wire Notes Line
+	5550 2350 5550 1200
+Wire Wire Line
+	6500 2550 6500 2400
+Wire Wire Line
+	6500 2400 6600 2400
+Wire Wire Line
+	6600 2400 6600 1800
+Wire Wire Line
+	6200 3750 6500 3750
+Wire Wire Line
+	5600 4150 6900 4150
+Wire Wire Line
+	7000 4450 7000 1800
+Connection ~ 3800 3050
+Wire Wire Line
+	6400 2200 4250 2200
+Wire Wire Line
+	4200 3950 4200 4100
+Wire Wire Line
+	4750 4450 4750 4150
+Wire Wire Line
+	6500 3100 6500 2950
+Wire Wire Line
+	6200 3750 6200 3600
+Connection ~ 5000 1850
+Wire Wire Line
+	5000 1850 5000 1700
+Wire Wire Line
+	4150 1800 4150 2100
+Wire Wire Line
+	6300 1800 6300 2100
+Wire Wire Line
+	4850 4450 4850 4050
+Wire Wire Line
+	5250 4450 5250 4400
+Wire Wire Line
+	5250 4400 5400 4400
+Wire Wire Line
+	5400 4400 5400 4450
+Wire Wire Line
+	3100 3850 3100 3700
+Wire Wire Line
+	3100 3700 3000 3700
+Wire Wire Line
+	4350 1800 4350 1950
+Wire Wire Line
+	4650 4450 4650 4400
+Wire Wire Line
+	4650 4400 4500 4400
+Wire Wire Line
+	4500 4400 4500 4450
+Wire Wire Line
+	6800 4450 6800 4400
+Wire Wire Line
+	6800 4400 6650 4400
+Wire Wire Line
+	6650 4400 6650 4450
+Wire Wire Line
+	5600 4150 5600 4450
+Wire Wire Line
+	4450 1850 4450 1800
+Wire Wire Line
+	6400 2200 6400 1800
+Wire Wire Line
+	4250 2200 4250 1800
+Wire Wire Line
+	6500 3750 6500 3600
+Wire Wire Line
+	6200 3100 6200 2950
+Wire Wire Line
+	4750 4150 5500 4150
+Wire Wire Line
+	5500 4150 5500 4450
+Wire Wire Line
+	3000 3500 3050 3500
+Wire Wire Line
+	3050 3500 3050 3250
+Wire Wire Line
+	3050 3250 3000 3250
+Wire Wire Line
+	3800 2950 3800 3450
+Wire Wire Line
+	6300 2100 4150 2100
+Wire Wire Line
+	6900 4150 6900 1800
+Wire Wire Line
+	4850 4050 6800 4050
+Wire Wire Line
+	6800 4050 6800 1800
+Wire Wire Line
+	6350 3750 6350 3900
+Connection ~ 6350 3750
+Wire Wire Line
+	6500 1800 6500 2300
+Wire Wire Line
+	6500 2300 6200 2300
+Wire Wire Line
+	6200 2300 6200 2550
+Wire Notes Line
+	4700 1200 4700 2300
+Wire Notes Line
+	4700 2300 3600 2300
+Wire Notes Line
+	7500 4250 6450 4250
+Wire Notes Line
+	6450 4250 6450 5150
+Wire Notes Line
+	5050 5100 5050 4250
+Wire Notes Line
+	5050 4250 4400 4250
+Wire Notes Line
+	4400 4250 4400 5100
+Wire Notes Line
+	2400 3350 3200 3350
+Wire Notes Line
+	3200 3350 3200 2800
+Wire Notes Line
+	3200 2800 2400 2800
+Wire Wire Line
+	4800 3950 4800 3850
+Connection ~ 4800 3450
+Text Label 6550 2400 0    60   ~ 0
+take-off
+Text Label 6250 2300 0    60   ~ 0
+alive
+$Comp
+L GND #PWR01
+U 1 1 507D3799
+P 4800 3950
+F 0 "#PWR01" H 4800 3950 30  0001 C CNN
+F 1 "GND" H 4800 3880 30  0001 C CNN
+	1    4800 3950
+	1    0    0    -1  
+$EndComp
+$Comp
+L C C1
+U 1 1 507D377D
+P 4800 3650
+F 0 "C1" H 4850 3750 50  0000 L CNN
+F 1 "0.1uF" H 4850 3550 50  0000 L CNN
+F 2 "SM1210L" H 4800 3650 60  0000 C CNN
+	1    4800 3650
+	1    0    0    -1  
+$EndComp
+Text Label 5200 3650 0    60   ~ 0
++6V
+Text Label 3050 3400 0    60   ~ 0
+raw
+$Comp
+L LM317 U1
+U 1 1 507D2C9C
+P 4200 3600
+F 0 "U1" H 4200 3900 60  0000 C CNN
+F 1 "LM2937" H 4250 3350 60  0000 L CNN
+F 2 "SOT223" H 4200 3600 60  0000 C CNN
+	1    4200 3600
+	1    0    0    -1  
+$EndComp
+$Comp
+L +5V #PWR02
+U 1 1 507D0922
+P 5000 1700
+F 0 "#PWR02" H 5000 1790 20  0001 C CNN
+F 1 "+5V" H 5000 1790 30  0000 C CNN
+	1    5000 1700
+	1    0    0    -1  
+$EndComp
+Text Notes 1000 6950 0    600  ~ 0
+relay board
+Text Notes 2450 2900 0    60   ~ 0
+main switch
+Text Notes 2450 3900 0    60   ~ 0
+accu
+Text Notes 4500 5050 0    60   ~ 0
+servo aero
+Text Notes 5250 5050 0    60   ~ 0
+servo cone
+Text Notes 7350 4400 0    60   ~ 0
+open switch
+Text Notes 7300 2250 0    60   ~ 0
+arduino
+Text Notes 3550 2200 0    60   ~ 0
+MPU-6050
+$Comp
+L CONN_2 P1
+U 1 1 507C0E75
+P 2650 3150
+F 0 "P1" V 2600 3150 40  0000 C CNN
+F 1 "main switch" V 2700 3150 40  0000 C CNN
+F 2 "2_smd_pad" H 2650 3150 60  0000 C CNN
+	1    2650 3150
+	-1   0    0    1   
+$EndComp
+$Comp
+L GND #PWR03
+U 1 1 507C0E44
+P 4200 4100
+F 0 "#PWR03" H 4200 4100 30  0001 C CNN
+F 1 "GND" H 4200 4030 30  0001 C CNN
+	1    4200 4100
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR04
+U 1 1 507C0DC2
+P 6350 3900
+F 0 "#PWR04" H 6350 3900 30  0001 C CNN
+F 1 "GND" H 6350 3830 30  0001 C CNN
+	1    6350 3900
+	1    0    0    -1  
+$EndComp
+$Comp
+L R R2
+U 1 1 507C0DBC
+P 6500 3350
+F 0 "R2" V 6580 3350 50  0000 C CNN
+F 1 "220" V 6500 3350 50  0000 C CNN
+F 2 "SM0805" H 6500 3350 60  0000 C CNN
+	1    6500 3350
+	1    0    0    -1  
+$EndComp
+$Comp
+L R R1
+U 1 1 507C0DB3
+P 6200 3350
+F 0 "R1" V 6280 3350 50  0000 C CNN
+F 1 "220" V 6200 3350 50  0000 C CNN
+F 2 "SM0805" H 6200 3350 60  0000 C CNN
+	1    6200 3350
+	1    0    0    -1  
+$EndComp
+$Comp
+L LED D2
+U 1 1 507C0DA7
+P 6500 2750
+F 0 "D2" H 6500 2850 50  0000 C CNN
+F 1 "led take-off (red)" H 6500 2650 50  0000 C CNN
+F 2 "LED-0805" H 6500 2750 60  0000 C CNN
+	1    6500 2750
+	0    1    1    0   
+$EndComp
+$Comp
+L LED D1
+U 1 1 507C0D93
+P 6200 2750
+F 0 "D1" H 6200 2850 50  0000 C CNN
+F 1 "led alive (blue)" H 6200 2650 50  0000 C CNN
+F 2 "LED-0805" H 6200 2750 60  0000 C CNN
+	1    6200 2750
+	0    1    1    0   
+$EndComp
+Text Label 7000 4200 0    60   ~ 0
+open
+Text Label 5700 4150 0    60   ~ 0
+cone
+Text Label 5150 4050 2    60   ~ 0
+aero
+Text Label 4900 2200 0    60   ~ 0
+scl
+Text Label 4900 2100 0    60   ~ 0
+sda
+$Comp
+L CONN_4 P4
+U 1 1 507C0C4B
+P 6450 1450
+F 0 "P4" V 6400 1450 50  0000 C CNN
+F 1 "conn num arduino" V 6500 1450 50  0000 C CNN
+F 2 "4_smd_pad" H 6450 1450 60  0000 C CNN
+	1    6450 1450
+	0    -1   -1   0   
+$EndComp
+$Comp
+L GND #PWR05
+U 1 1 507C0B70
+P 4350 1950
+F 0 "#PWR05" H 4350 1950 30  0001 C CNN
+F 1 "GND" H 4350 1880 30  0001 C CNN
+	1    4350 1950
+	1    0    0    -1  
+$EndComp
+$Comp
+L CONN_4 P3
+U 1 1 507C0A4E
+P 4300 1450
+F 0 "P3" V 4250 1450 50  0000 C CNN
+F 1 "conn MPU" V 4350 1450 50  0000 C CNN
+F 2 "4_smd_pad" H 4300 1450 60  0000 C CNN
+	1    4300 1450
+	0    -1   -1   0   
+$EndComp
+$Comp
+L GND #PWR06
+U 1 1 507C0B3A
+P 5900 1950
+F 0 "#PWR06" H 5900 1950 30  0001 C CNN
+F 1 "GND" H 5900 1880 30  0001 C CNN
+	1    5900 1950
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR07
+U 1 1 507C0B33
+P 6650 4450
+F 0 "#PWR07" H 6650 4450 30  0001 C CNN
+F 1 "GND" H 6650 4380 30  0001 C CNN
+	1    6650 4450
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR08
+U 1 1 507C0B2E
+P 5250 4450
+F 0 "#PWR08" H 5250 4450 30  0001 C CNN
+F 1 "GND" H 5250 4380 30  0001 C CNN
+	1    5250 4450
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR09
+U 1 1 507C0B1D
+P 4500 4450
+F 0 "#PWR09" H 4500 4450 30  0001 C CNN
+F 1 "GND" H 4500 4380 30  0001 C CNN
+	1    4500 4450
+	1    0    0    -1  
+$EndComp
+$Comp
+L CONN_3 K4
+U 1 1 507C0B0B
+P 6900 1450
+F 0 "K4" V 6850 1450 50  0000 C CNN
+F 1 "conn sig arduino" V 6950 1450 40  0000 C CNN
+F 2 "3_smd_pad" H 6900 1450 60  0000 C CNN
+	1    6900 1450
+	0    -1   -1   0   
+$EndComp
+$Comp
+L CONN_3 K3
+U 1 1 507C0AE3
+P 5900 1450
+F 0 "K3" V 5850 1450 50  0000 C CNN
+F 1 "conn power arduino" V 5950 1450 40  0000 C CNN
+F 2 "3_smd_pad" H 5900 1450 60  0000 C CNN
+	1    5900 1450
+	0    -1   -1   0   
+$EndComp
+$Comp
+L CONN_2 P5
+U 1 1 507C0A1A
+P 6900 4800
+F 0 "P5" V 6850 4800 40  0000 C CNN
+F 1 "conn open switch" V 6950 4800 40  0000 C CNN
+F 2 "2_smd_pad" H 6900 4800 60  0000 C CNN
+	1    6900 4800
+	0    1    1    0   
+$EndComp
+$Comp
+L CONN_3 K2
+U 1 1 507C0A0C
+P 5500 4800
+F 0 "K2" V 5450 4800 50  0000 C CNN
+F 1 "conn servo cone" V 5550 4800 40  0000 C CNN
+F 2 "3_smd_pad" H 5500 4800 60  0000 C CNN
+	1    5500 4800
+	0    1    1    0   
+$EndComp
+$Comp
+L CONN_3 K1
+U 1 1 507C09E8
+P 4750 4800
+F 0 "K1" V 4700 4800 50  0000 C CNN
+F 1 "conn servo aero" V 4800 4800 40  0000 C CNN
+F 2 "3_smd_pad" H 4750 4800 60  0000 C CNN
+	1    4750 4800
+	0    1    1    0   
+$EndComp
+$Comp
+L +BATT #PWR010
+U 1 1 507C09BE
+P 3800 2950
+F 0 "#PWR010" H 3800 2900 20  0001 C CNN
+F 1 "+BATT" H 3800 3050 30  0000 C CNN
+	1    3800 2950
+	1    0    0    -1  
+$EndComp
+$Comp
+L GND #PWR011
+U 1 1 507C0999
+P 3100 3850
+F 0 "#PWR011" H 3100 3850 30  0001 C CNN
+F 1 "GND" H 3100 3780 30  0001 C CNN
+	1    3100 3850
+	1    0    0    -1  
+$EndComp
+$Comp
+L CONN_2 P2
+U 1 1 507C0980
+P 2650 3600
+F 0 "P2" V 2600 3600 40  0000 C CNN
+F 1 "Conn accu" V 2700 3600 40  0000 C CNN
+F 2 "2_smd_pad" H 2650 3600 60  0000 C CNN
+	1    2650 3600
+	-1   0    0    1   
+$EndComp
+$EndSCHEMATC

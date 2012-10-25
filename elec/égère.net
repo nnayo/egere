@@ -1,0 +1,167 @@
+# EESchema Netlist Version 1.1 created  mar. 16 oct. 2012 17:52:15 CEST
+(
+ ( /507D377D SM1210L  C1 0.1uF {Lib=C}
+  (    1 /+6V )
+  (    2 GND )
+ )
+ ( /507D2C9C SOT223  U1 LM2937 {Lib=LM317}
+  (    1 +BATT )
+  (    2 GND )
+  (    3 /+6V )
+ )
+ ( /507C0E75 2_smd_pad  P1 main_switch {Lib=CONN_2}
+  (    1 /raw )
+  (    2 +BATT )
+ )
+ ( /507C0DBC SM0805  R2 220 {Lib=R}
+  (    1 N-000006 )
+  (    2 GND )
+ )
+ ( /507C0DB3 SM0805  R1 220 {Lib=R}
+  (    1 N-000004 )
+  (    2 GND )
+ )
+ ( /507C0DA7 LED-0805  D2 led_take-off_(red) {Lib=LED}
+  (    1 /take-off )
+  (    2 N-000006 )
+ )
+ ( /507C0D93 LED-0805  D1 led_alive_(blue) {Lib=LED}
+  (    1 /alive )
+  (    2 N-000004 )
+ )
+ ( /507C0C4B 4_smd_pad  P4 conn_num_arduino {Lib=CONN_4}
+  (    1 /sda )
+  (    2 /scl )
+  (    3 /alive )
+  (    4 /take-off )
+ )
+ ( /507C0A4E 4_smd_pad  P3 conn_MPU {Lib=CONN_4}
+  (    1 /sda )
+  (    2 /scl )
+  (    3 GND )
+  (    4 +5V )
+ )
+ ( /507C0B0B 3_smd_pad  K4 conn_sig_arduino {Lib=CONN_3}
+  (    1 /aero )
+  (    2 /cone )
+  (    3 /open )
+ )
+ ( /507C0AE3 3_smd_pad  K3 conn_power_arduino {Lib=CONN_3}
+  (    1 +BATT )
+  (    2 GND )
+  (    3 +5V )
+ )
+ ( /507C0A1A 2_smd_pad  P5 conn_open_switch {Lib=CONN_2}
+  (    1 /open )
+  (    2 GND )
+ )
+ ( /507C0A0C 3_smd_pad  K2 conn_servo_cone {Lib=CONN_3}
+  (    1 /cone )
+  (    2 /+6V )
+  (    3 GND )
+ )
+ ( /507C09E8 3_smd_pad  K1 conn_servo_aero {Lib=CONN_3}
+  (    1 /aero )
+  (    2 /+6V )
+  (    3 GND )
+ )
+ ( /507C0980 2_smd_pad  P2 Conn_accu {Lib=CONN_2}
+  (    1 GND )
+  (    2 /raw )
+ )
+)
+*
+{ Allowed footprints by component:
+$component C1
+ SM*
+ C?
+ C1-1
+$endlist
+$component R2
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component R1
+ R?
+ SM0603
+ SM0805
+ R?-*
+$endlist
+$component D2
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$component D1
+ LED-3MM
+ LED-5MM
+ LED-10MM
+ LED-0603
+ LED-0805
+ LED-1206
+ LEDV
+$endlist
+$endfootprintlist
+}
+{ Pin List by Nets
+Net 1 "/scl" "scl"
+ P3 2
+ P4 2
+Net 2 "/alive" "alive"
+ P4 3
+ D1 1
+Net 3 "/cone" "cone"
+ K4 2
+ K2 1
+Net 4 "" ""
+ R1 1
+ D1 2
+Net 5 "/sda" "sda"
+ P3 1
+ P4 1
+Net 6 "" ""
+ R2 1
+ D2 2
+Net 7 "/raw" "raw"
+ P1 1
+ P2 2
+Net 8 "/+6V" "+6V"
+ K2 2
+ C1 1
+ K1 2
+ U1 3
+Net 9 "/open" "open"
+ P5 1
+ K4 3
+Net 10 "/aero" "aero"
+ K4 1
+ K1 1
+Net 11 "GND" "GND"
+ K3 2
+ C1 2
+ P5 2
+ K2 3
+ K1 3
+ P2 1
+ U1 2
+ R2 2
+ R1 2
+ P3 3
+Net 12 "+5V" "+5V"
+ P3 4
+ K3 3
+Net 13 "+BATT" "+BATT"
+ U1 1
+ P1 2
+ K3 1
+Net 14 "/take-off" "take-off"
+ P4 4
+ D2 1
+}
+#End

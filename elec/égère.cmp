@@ -1,0 +1,108 @@
+Cmp-Mod V01 Created by CvPCB (2011-05-25)-stable date = mar. 16 oct. 2012 14:42:36 CEST
+
+BeginCmp
+TimeStamp = /507D377D;
+Reference = C1;
+ValeurCmp = 0.1uF;
+IdModule  = SM1210L;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0D93;
+Reference = D1;
+ValeurCmp = led_alive_(blue);
+IdModule  = LED-0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0DA7;
+Reference = D2;
+ValeurCmp = led_take-off_(red);
+IdModule  = LED-0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C09E8;
+Reference = K1;
+ValeurCmp = conn_servo_aero;
+IdModule  = 3_smd_pad;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0A0C;
+Reference = K2;
+ValeurCmp = conn_servo_cone;
+IdModule  = 3_smd_pad;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0AE3;
+Reference = K3;
+ValeurCmp = conn_power_arduino;
+IdModule  = 3_smd_pad;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0B0B;
+Reference = K4;
+ValeurCmp = conn_sig_arduino;
+IdModule  = 3_smd_pad;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0E75;
+Reference = P1;
+ValeurCmp = main_switch;
+IdModule  = 2_smd_pad;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0980;
+Reference = P2;
+ValeurCmp = Conn_accu;
+IdModule  = 2_smd_pad;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0A4E;
+Reference = P3;
+ValeurCmp = conn_MPU;
+IdModule  = 4_smd_pad;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0C4B;
+Reference = P4;
+ValeurCmp = conn_num_arduino;
+IdModule  = 4_smd_pad;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0A1A;
+Reference = P5;
+ValeurCmp = conn_open_switch;
+IdModule  = 2_smd_pad;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0DB3;
+Reference = R1;
+ValeurCmp = 220;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /507C0DBC;
+Reference = R2;
+ValeurCmp = 220;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /507D2C9C;
+Reference = U1;
+ValeurCmp = LM317;
+IdModule  = SOT223;
+EndCmp
+
+EndListe

@@ -1,0 +1,87 @@
+arduino	atmega	function
+-------+-------+--------
+
+D9	PB1	servo cone
+D10	PB2	servo aero
+
+D5	PD5	led alive
+D6	PD6	led open
+D7	PD7	cone open switch
+
+A4	PC4	sda
+A5	PC5	scl
+
++9V	PWR	power in
++5V	+5V	power out
+GND	GND	ground
+
+
+MPU-6050	function
+---------------+--------
+
+sda		sda
+scl		scl
+
++5V		power in
+GND		ground
+
+
+servo cône	function
+---------------+--------
+
++5V		power in
+ctrl		control signal
+GND		ground
+
+
+servo aero	function
+---------------+--------
+
++5V		power in
+ctrl		control signal
+GND		ground
+
+
+switch		function
+---------------+--------
+
+GND		ground
+sig		signal
+
+
+
+relay card	function
+---------------+--------
+
++9V		power in (accu)
+GND		ground (accu)
+
++6V		power out (servo cone)
+GND		ground (servo cone)
++6V		power out (servo aero)
+GND		ground (servo aero)
+
++9V		power out (arduino)
++5V		power in (arduino)
+GND		ground (arduino)
+
++5V		power out (MPU)
+GND		ground (MPU)
+
+sig		signal in (switch)
+sig		signal out (arduino)
+GND		ground (switch)
+
+sda		sda (arduino)
+sda		sda (MPU)
+scl		scl(arduino)
+scl		scl(MPU)
+
+ctrl		ctrl servo aero (arduino)
+ctrl		ctrl servo aero (servo)
+
+ctrl		ctrl servo cone (arduino)
+ctrl		ctrl servo cone (servo)
+
+led alive	signal in (arduino)
+led take-off	signal in (arduino)
