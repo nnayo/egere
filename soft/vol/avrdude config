@@ -1,0 +1,11 @@
+# basic access to arduino pro mini
+#
+avrdude -p atmega328p -c arduino -P /dev/ttyACM0 -v -v -b 57600
+
+# eeprom dump to file in S-rec format
+#
+avrdude -p atmega328p -c arduino -P /dev/ttyACM0 -vv -b 57600 -U eeprom:r:eeprom.file:s
+
+# flash dump to file in S-rec format
+#
+avrdude -p atmega328p -c arduino -P /dev/ttyACM0 -vv -b 57600 -U eeprom:r:flash.file:s

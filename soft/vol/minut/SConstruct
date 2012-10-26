@@ -1,0 +1,77 @@
+project_name = 'minut'
+
+
+minut	= [
+	'main.c',		\
+	'minut.c',		\
+	'servo.c',		\
+	'acq.c',		\
+]
+
+import os
+
+libs = ['scalp', 'nanoK']
+libpath = [os.environ['TROLL_PROJECTS'] + '/scalp', os.environ['TROLL_PROJECTS'] + '/nanoK']
+
+mcu_target      = 'atmega328p'
+optimize        = '-Os -mcall-prologues -fshort-enums -std=c99 '
+#optimize        = '-Os -mcall-prologues -fshort-enums '
+includes	= ['.', os.environ['TROLL_PROJECTS'] + '/nanoK', os.environ['TROLL_PROJECTS'] + '/scalp']
+cflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target
+ldflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target + ' -Wl,-Map,minut.map,--cref'
+ldflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target + ' -Wl,-Map,' + project_name + '.map,--cref'
+
+env = Environment(
+	CC = 'avr-gcc',		\
+	AR = 'avr-ar',		\
+	CFLAGS = cflags,	\
+	CPPPATH = includes,	\
+	LINKFLAGS = ldflags,	\
+)
+
+Export('env')
+
+SConscript([os.environ['TROLL_PROJECTS'] + '/scalp/SConscript', os.environ['TROLL_PROJECTS'] + '/nanoK/SConscript'], exports='env')
+
+default = env.Program(project_name + '.elf', minut, LIBS = libs, LIBPATH = libpath)
+env.Default(default)
+
+# generate a file with code and source
+env.Alias('lis', project_name + '.elf', 'avr-objdump -h -S ' + project_name + '.elf > ' + project_name + '.lis')
+env.AlwaysBuild('lis')
+
+
+# give the size of the binary
+env.Alias('size', project_name + '.elf', 'avr-size -t ' + project_name + '.elf')
+env.AlwaysBuild('size')
+
+
+# load binary in flash
+env.Alias('load', '', 'avarice --read-lockbits --read-fuses --dragon --jtag usb --jtag-bitrate 1 :1111 --erase --file ' + project_name + '.elf')
+env.AlwaysBuild('load')
+
+
+# just debug the soft in flash
+env.Alias('server', '', 'avarice --read-lockbits --read-fuses --dragon --jtag usb --jtag-bitrate 1 :1111')
+env.AlwaysBuild('server')
+
+
+# connect to server for debug
+env.Alias('debug', '', 'avr-gdb ' + project_name + '.elf')
+env.AlwaysBuild('debug')
+
+
+# download the frames in eeprom
+env.Alias('eeprom', '', 'avrdude -P usb -p ' + mcu_target + ' -c dragon_jtag -D -U eeprom:w:' + project_name + '.bin:r')
+env.AlwaysBuild('eeprom')
+
+
+# connect to target with a terminal
+env.Alias('term', '', 'avrdude -P usb -p ' + mcu_target + ' -c dragon_jtag -t')
+env.AlwaysBuild('term')
+
+
+# suppress reliquat files
+env.Alias('clean', '', 'rm -f *~ *o */*.o *.a *.lis')
+env.AlwaysBuild('clean')
+
