@@ -4,9 +4,9 @@ arduino	atmega	function
 D9	PB1	servo cone
 D10	PB2	servo aero
 
-D5	PD5	led alive
-D6	PD6	led open
-D7	PD7	cone open switch
+D13	PB5	led alive
+D12	PB4	led open
+D11	PB3	cone open switch
 
 A4	PC4	sda
 A5	PC5	scl
