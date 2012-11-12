@@ -23,9 +23,9 @@
 
 #define CONE_DDR		DDRB
 #define CONE			PORTB
-#define CONE_PIN		PB2
-#define CONE_STATE_OPEN		0
-#define CONE_STATE_CLOSED	_BV(CONE_PIN)
+#define CONE_PIN		PB3
+#define CONE_STATE_CLOSED		0
+#define CONE_STATE_OPEN	_BV(CONE_PIN)
 
 #define SAMPLING_PERIOD	(100 * TIME_1_MSEC)
 
@@ -35,6 +35,7 @@
 //
 
 typedef enum {
+	MNT_EV_NONE,
 	MNT_EV_CONE_OPEN,
 	MNT_EV_CONE_CLOSED,
 	MNT_EV_TIME_OUT,
@@ -84,32 +85,32 @@ struct {
 } MNT;
 
 
-static stm_transition_t init2cone_opening;
-static stm_transition_t init2aero_opening;
-static stm_transition_t cone_opening2aero_opening;
-static stm_transition_t cone_opening2cone_closed;
-static stm_transition_t aero_opening2aero_open;
-static stm_transition_t aero_open2cone_closing;
-static stm_transition_t cone_closing2cone_closed;
-static stm_transition_t cone_closed2waiting;
-static stm_transition_t waiting2flight;
-static stm_transition_t flight2cone_open;
-static stm_transition_t cone_open2braking;
-static stm_transition_t braking2cone_open;
-static stm_transition_t braking2parachute;
+static const stm_transition_t init2cone_opening;
+static const stm_transition_t init2aero_opening;
+static const stm_transition_t cone_opening2aero_opening;
+static const stm_transition_t cone_opening2cone_closed;
+static const stm_transition_t aero_opening2aero_open;
+static const stm_transition_t aero_open2cone_closing;
+static const stm_transition_t cone_closing2cone_closed;
+static const stm_transition_t cone_closed2waiting;
+static const stm_transition_t waiting2flight;
+static const stm_transition_t flight2cone_open;
+static const stm_transition_t cone_open2braking;
+static const stm_transition_t braking2cone_open;
+static const stm_transition_t braking2parachute;
 
 
-static stm_state_t init;
-static stm_state_t cone_opening;
-static stm_state_t aero_opening;
-static stm_state_t aero_open;
-static stm_state_t cone_closing;
-static stm_state_t cone_closed;
-static stm_state_t waiting;
-static stm_state_t flight;
-static stm_state_t cone_open;
-static stm_state_t braking;
-static stm_state_t parachute;
+static const stm_state_t init;
+static const stm_state_t cone_opening;
+static const stm_state_t aero_opening;
+static const stm_state_t aero_open;
+static const stm_state_t cone_closing;
+static const stm_state_t cone_closed;
+static const stm_state_t waiting;
+static const stm_state_t flight;
+static const stm_state_t cone_open;
+static const stm_state_t braking;
+static const stm_state_t parachute;
 
 static u8 init_action(pt_t* pt, void* args);
 static u8 cone_opening_action(pt_t* pt, void* args);
@@ -124,137 +125,137 @@ static u8 braking_action(pt_t* pt, void* args);
 static u8 parachute_action(pt_t* pt, void* args);
 
 
-static stm_transition_t init2cone_opening = {
+static const stm_transition_t init2cone_opening = {
 	.ev = MNT_EV_CONE_CLOSED,
 	.st = &cone_opening,
 	.tr = &init2aero_opening,
 };
 
-static stm_transition_t init2aero_opening = {
+static const stm_transition_t init2aero_opening = {
 	.ev = MNT_EV_CONE_OPEN,
 	.st = &aero_opening,
 	.tr = NULL,
 };
 
-static stm_transition_t cone_opening2aero_opening = {
+static const stm_transition_t cone_opening2aero_opening = {
 	.ev = MNT_EV_CONE_OPEN,
 	.st = &aero_opening,
 	.tr = &cone_opening2cone_closed,
 };
 
-static stm_transition_t cone_opening2cone_closed = {
+static const stm_transition_t cone_opening2cone_closed = {
 	.ev = MNT_EV_TIME_OUT,
 	.st = &cone_closed,
 	.tr = NULL,
 };
 
-static stm_transition_t aero_opening2aero_open = {
+static const stm_transition_t aero_opening2aero_open = {
 	.ev = MNT_EV_TIME_OUT,
 	.st = &aero_open,
 	.tr = NULL,
 };
 
-static stm_transition_t aero_open2cone_closing = {
+static const stm_transition_t aero_open2cone_closing = {
 	.ev = MNT_EV_CONE_CLOSED,
 	.st = &cone_closing,
 	.tr = NULL,
 };
 
-static stm_transition_t cone_closing2cone_closed = {
+static const stm_transition_t cone_closing2cone_closed = {
 	.ev = MNT_EV_TIME_OUT,
 	.st = &cone_closed,
 	.tr = NULL,
 };
 
-static stm_transition_t cone_closed2waiting = {
+static const stm_transition_t cone_closed2waiting = {
 	.ev = MNT_EV_TIME_OUT,
 	.st = &waiting,
 	.tr = NULL,
 };
 
-static stm_transition_t waiting2flight = {
+static const stm_transition_t waiting2flight = {
 	.ev = MNT_EV_TAKE_OFF,
 	.st = &flight,
 	.tr = NULL,
 };
 
-static stm_transition_t flight2cone_open = {
+static const stm_transition_t flight2cone_open = {
 	.ev = MNT_EV_TIME_OUT,
 	.st = &cone_open,
 	.tr = NULL,
 };
 
-static stm_transition_t cone_open2braking = {
+static const stm_transition_t cone_open2braking = {
 	.ev = MNT_EV_TIME_OUT,
 	.st = &braking,
 	.tr = NULL,
 };
 
-static stm_transition_t braking2cone_open = {
+static const stm_transition_t braking2cone_open = {
 	.ev = MNT_EV_TIME_OUT,
 	.st = &cone_open,
 	.tr = &braking2parachute,
 };
 
-static stm_transition_t braking2parachute = {
+static const stm_transition_t braking2parachute = {
 	.ev = MNT_EV_CONE_OPEN,
 	.st = &parachute,
 	.tr = NULL,
 };
 
 
-static stm_state_t init = {
+static const stm_state_t init = {
 	.action = init_action,
 	.transition = &init2cone_opening,
 };
 
-static stm_state_t cone_opening = {
+static const stm_state_t cone_opening = {
 	.action = cone_opening_action,
 	.transition = &cone_opening2aero_opening,
 };
 
-static stm_state_t aero_opening = {
+static const stm_state_t aero_opening = {
 	.action = aero_opening_action,
 	.transition = &aero_opening2aero_open,
 };
 
-static stm_state_t aero_open = {
+static const stm_state_t aero_open = {
 	.action = aero_open_action,
 	.transition = &aero_open2cone_closing,
 };
 
-static stm_state_t cone_closing = {
+static const stm_state_t cone_closing = {
 	.action = cone_closing_action,
 	.transition = &cone_closing2cone_closed,
 };
 
 
-static stm_state_t cone_closed = {
+static const stm_state_t cone_closed = {
 	.action = cone_closed_action,
 	.transition = &cone_closed2waiting,
 };
 
-static stm_state_t waiting = {
+static const stm_state_t waiting = {
 	.action = waiting_action,
 	.transition = &waiting2flight,
 };
 
-static stm_state_t flight = {
+static const stm_state_t flight = {
 	.action = flight_action,
 	.transition = &flight2cone_open,
 };
 
-static stm_state_t cone_open = {
+static const stm_state_t cone_open = {
 	.action = cone_open_action,
 	.transition = &cone_open2braking,
 };
 
-static stm_state_t braking = {
+static const stm_state_t braking = {
 	.action = braking_action,
 	.transition = &braking2cone_open,
 };
 
-static stm_state_t parachute = {
+static const stm_state_t parachute = {
 	.action = parachute_action,
 	.transition = NULL,
 };
@@ -271,14 +272,21 @@ static u8 init_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0x55, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x0f)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
+
+	// led alive 1s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 100)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -291,12 +299,14 @@ static u8 cone_opening_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone open
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0xaa, 0x09)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x09)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// time-out 5s
 	MNT.time_out = TIME_get() + 5 * TIME_1_SEC;
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -309,17 +319,19 @@ static u8 aero_opening_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde aero open
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0x55, 0x09)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x09)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// time-out 5s
 	MNT.time_out = TIME_get() + 5 * TIME_1_SEC;
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -332,9 +344,11 @@ static u8 aero_open_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde aero stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0x55, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x0f)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -347,6 +361,8 @@ static u8 cone_closing_action(pt_t* pt, void* args)
 	// time-out 5s
 	MNT.time_out = TIME_get() + 5 * TIME_1_SEC;
 
+	PT_YIELD_WHILE(pt, OK);
+
 	PT_END(pt);
 }
 
@@ -358,12 +374,14 @@ static u8 cone_closed_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone close
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0xaa, 0xc1)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0xc1)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// time-out 1s
 	MNT.time_out = TIME_get() + 1 * TIME_1_SEC;
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -376,9 +394,11 @@ static u8 waiting_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -391,16 +411,24 @@ static u8 flight_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone close
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0xaa, 0xc1)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0xc1)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero close
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0x55, 0xc1)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0xc1)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// time-out = flight time
+	MNT.time_out = MNT.open_time * TIME_1_SEC / 10 + TIME_get();
+
+	// led alive 0.1s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 10)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -413,17 +441,24 @@ static u8 cone_open_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone open
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0xaa, 0x09)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x09)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0x55, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x0f)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
+	// led open 0.1s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0x09, 0x00, 10)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// time-out 0.1s
 	MNT.time_out = TIME_get() + 100 * TIME_1_MSEC;
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -436,17 +471,19 @@ static u8 braking_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero open
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0x55, 0x09)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x09)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// time-out 0.1s
 	MNT.time_out = TIME_get() + 100 * TIME_1_MSEC;
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -459,15 +496,21 @@ static u8 parachute_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0x55, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x0f)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
+	// led open 1s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0x09, 0x00, 100)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
+	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
@@ -645,7 +688,7 @@ void MNT_init(void)
 	CONE_DDR &= ~_BV(CONE_PIN);
 
 	// init the cone state with its opposite value to generate the first event
-	MNT.cone_state = ~CONE & _BV(CONE_PIN);
+	MNT.cone_state = ~(CONE & _BV(CONE_PIN));
 
 	// init fifoes
 	FIFO_init(&MNT.ev_fifo, MNT.ev_buf, NB_EVENTS, sizeof(mnt_event_t));
@@ -697,6 +740,7 @@ void MNT_run(void)
 		STM_event(&MNT.stm, ev);
 	}
 
+	// update state machine
 	STM_run(&MNT.stm);
 
 	// send outgoing frame(s) if any
