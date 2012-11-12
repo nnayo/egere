@@ -2,7 +2,7 @@
 
 #include "dispatcher.h"
 
-#include "drivers/timer0.h"
+#include "drivers/timer1.h"
 #include "utils/pt.h"
 #include "utils/fifo.h"
 #include "utils/time.h"
@@ -20,8 +20,8 @@
 #define SERVO_DDR	DDRB
 #define SERVO_PORT	PORTB
 #define SERVO_PIN	PINB
-#define SERVO_CONE	_BV(PB3)
-#define SERVO_AERO	_BV(PB4)
+#define SERVO_CONE	_BV(PB1)
+#define SERVO_AERO	_BV(PB2)
 
 
 // ------------------------------------------
@@ -65,70 +65,38 @@ struct {
 // activate the cone servo to drive it to the given position
 static void SERVO_cone_on(s8 position)
 {
-	u8 compare;
-
-	// configure port
-	SERVO_DDR |= SERVO_CONE;
-
 	// compute the compare value according to the required position and the prescaler
-	// for position = -90 degrees, signal up time shall be 1 ms so compare = 8
-	// for position = 0 degrees, signal up time shall be 1.5 ms so compare = 12
-	// for position = +90 degrees, signal up time shall be 2 ms so compare = 16
-	compare = 12 + (position * 4) / 90;
-
-	// init the driver, by default, the pwm is zero
-	TMR0_init(TMR0_WITHOUT_INTERRUPT, TMR0_WGM_FAST_PWM | TMR0_COM_11 | TMR0_PRESCALER_1024, compare, NULL, NULL);
-
-	// launch the pwm generation
-	TMR0_start();
+	// for position = -90 degrees, signal up time shall be 1 ms so compare = 2000
+	// for position = 0 degrees, signal up time shall be 1.5 ms so compare = 3000
+	// for position = +90 degrees, signal up time shall be 2 ms so compare = 4000
+	TMR1_compare_set(TMR1_A, (position * 1000 / 90) + 3000);
 }
+
 
 // deactivate the cone servo to save power
 static void SERVO_cone_off(void)
 {
-	// configure port
-	SERVO_DDR |= SERVO_CONE;
-
-	// stop the pwm generation
-	TMR0_stop();
-
-	// force output low
-	SERVO_PORT &= ~SERVO_CONE;
+	// setting the compare value to 0, ensure output pin is driven lo
+	TMR1_compare_set(TMR1_A, 0);
 }
 
 
 // activate the aero servo to drive it to the given position
 static void SERVO_aero_on(s8 position)
 {
-	u8 compare;
-
-	// configure port
-	SERVO_DDR |= SERVO_CONE;
-
 	// compute the compare value according to the required position and the prescaler
-	// for position = -90 degrees, signal up time shall be 1 ms so compare = 8
-	// for position = 0 degrees, signal up time shall be 1.5 ms so compare = 12
-	// for position = +90 degrees, signal up time shall be 2 ms so compare = 16
-	compare = 12 + (position * 4) / 90;
-
-	// init the driver, by default, the pwm is zero
-	TMR0_init(TMR0_WITHOUT_INTERRUPT, TMR0_WGM_FAST_PWM | TMR0_COM_11 | TMR0_PRESCALER_1024, compare, NULL, NULL);
-
-	// launch the pwm generation
-	TMR0_start();
+	// for position = -90 degrees, signal up time shall be 1 ms so compare = 2000
+	// for position = 0 degrees, signal up time shall be 1.5 ms so compare = 3000
+	// for position = +90 degrees, signal up time shall be 2 ms so compare = 4000
+	TMR1_compare_set(TMR1_B, (position * 1000 / 90) + 3000);
 }
+
 
 // deactivate the aero servo to save power
 static void SERVO_aero_off(void)
 {
-	// configure port
-	SERVO_DDR |= SERVO_CONE;
-
-	// stop the pwm generation
-	TMR0_stop();
-
-	// force output low
-	SERVO_PORT &= ~SERVO_CONE;
+	// setting the compare value to 0, ensure output pin is driven lo
+	TMR1_compare_set(TMR1_A, 0);
 }
 
 
@@ -305,11 +273,15 @@ static PT_THREAD( SERVO_cmde(pt_t* pt) )
 	PT_BEGIN(pt);
 
 	// if no incoming frame is available
-	PT_WAIT_UNTIL(pt, KO == FIFO_get(&SERVO.in, &SERVO.cmd_fr) );
+	PT_WAIT_UNTIL(pt, FIFO_get(&SERVO.in, &SERVO.cmd_fr) );
 
 	// if it is a response
 	if (SERVO.cmd_fr.resp) {
 		// ignore it
+
+		// release the dispatcher
+		DPT_unlock(&SERVO.interf);
+
 		// and restart waiting
 		PT_RESTART(pt);
 	}
@@ -380,13 +352,23 @@ void SERVO_init(void)
 	FIFO_init(&SERVO.in, &SERVO.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
 	FIFO_init(&SERVO.out, &SERVO.out_buf, OUT_FIFO_SIZE, sizeof(frame_t));
 
-	SERVO.interf.channel = 7;
+	SERVO.interf.channel = 5;
 	SERVO.interf.cmde_mask = _CM(FR_MINUT_SERVO_CMD) | _CM(FR_MINUT_SERVO_INFO);
 	SERVO.interf.queue = &SERVO.in;
 	DPT_register(&SERVO.interf);
 
 	PT_INIT(&SERVO.pt);
 	PT_INIT(&SERVO.pt_cmde);
+
+	// configure port
+	SERVO_DDR |= SERVO_CONE;
+	SERVO_DDR |= SERVO_AERO;
+
+	// init the driver, by default, the pwm is zero
+	TMR1_init(TMR1_WITHOUT_INTERRUPT, TMR1_PRESCALER_8, TMR1_WGM_FAST_PWM_OCR1A, COM1AB_1010, NULL, NULL);
+
+	// launch the pwm generation
+	TMR1_start();
 }
 
 
