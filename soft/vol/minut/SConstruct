@@ -5,7 +5,8 @@ minut	= [
 	'main.c',		\
 	'minut.c',		\
 	'servo.c',		\
-	'acq.c',		\
+	'mpu6050.c',	\
+	'tk-off.c',		\
 ]
 
 import os
@@ -16,10 +17,23 @@ libpath = [os.environ['TROLL_PROJECTS'] + '/scalp', os.environ['TROLL_PROJECTS']
 mcu_target      = 'atmega328p'
 optimize        = '-Os -mcall-prologues -fshort-enums -std=c99 '
 #optimize        = '-Os -mcall-prologues -fshort-enums '
-includes	= ['.', os.environ['TROLL_PROJECTS'] + '/nanoK', os.environ['TROLL_PROJECTS'] + '/scalp']
+includes	= [
+				'.',
+				os.environ['TROLL_PROJECTS'] + '/nanoK',
+				os.environ['TROLL_PROJECTS'] + '/scalp',
+				'/home/yog/TRoll/projects/simavr/simavr/sim/avr',
+			]
 cflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target
-ldflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target + ' -Wl,-Map,minut.map,--cref'
-ldflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target + ' -Wl,-Map,' + project_name + '.map,--cref'
+ldflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target + ' -Wl,-Map,' + project_name + '.map,--cref '
+ldflags		+= '-Wl,--undefined=_mmcu,--section-start=.mmcu=0x8000'
+
+
+builder_hex = Builder(
+	action = Action(
+		"avr-objcopy -O ihex -R .eeprom -R .mmcu $SOURCE $TARGET", cmdstr = "$HEXCOMSTR"), 
+		suffix = ".hex", 
+		src_suffix = ".elf"
+)
 
 env = Environment(
 	CC = 'avr-gcc',		\
@@ -29,12 +43,15 @@ env = Environment(
 	LINKFLAGS = ldflags,	\
 )
 
+env.Append( BUILDERS = { 'Hex': builder_hex, } )
+env.Hex(project_name, project_name)
+
 Export('env')
 
 SConscript([os.environ['TROLL_PROJECTS'] + '/scalp/SConscript', os.environ['TROLL_PROJECTS'] + '/nanoK/SConscript'], exports='env')
 
-default = env.Program(project_name + '.elf', minut, LIBS = libs, LIBPATH = libpath)
-env.Default(default)
+elf = env.Program(project_name + '.elf', minut, LIBS = libs, LIBPATH = libpath)
+env.Default(elf)
 
 # generate a file with code and source
 env.Alias('lis', project_name + '.elf', 'avr-objdump -h -S ' + project_name + '.elf > ' + project_name + '.lis')
@@ -47,18 +64,8 @@ env.AlwaysBuild('size')
 
 
 # load binary in flash
-env.Alias('load', '', 'avarice --read-lockbits --read-fuses --dragon --jtag usb --jtag-bitrate 1 :1111 --erase --file ' + project_name + '.elf')
-env.AlwaysBuild('load')
-
-
-# just debug the soft in flash
-env.Alias('server', '', 'avarice --read-lockbits --read-fuses --dragon --jtag usb --jtag-bitrate 1 :1111')
-env.AlwaysBuild('server')
-
-
-# connect to server for debug
-env.Alias('debug', '', 'avr-gdb ' + project_name + '.elf')
-env.AlwaysBuild('debug')
+load = env.Alias('load', project_name + '.hex', 'avrdude -V -c arduino -p ATMEGA328P -P /dev/ttyACM0 -b 57600 -U flash:w:' + project_name + '.hex')
+env.AlwaysBuild(load)
 
 
 # download the frames in eeprom
@@ -69,6 +76,18 @@ env.AlwaysBuild('eeprom')
 # connect to target with a terminal
 env.Alias('term', '', 'avrdude -P usb -p ' + mcu_target + ' -c dragon_jtag -t')
 env.AlwaysBuild('term')
+
+
+# test with simavr
+run = env.Alias('run', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf -ee minut_eeprom_frames.hex')
+env.AlwaysBuild(run)
+
+
+# test with simavr & avr-gdb
+sim = env.Alias('sim', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -g -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf -ee minut_eeprom_frames.hex')
+env.AlwaysBuild(sim)
+gdb = env.Alias('gdb', project_name + '.elf', 'avr-gdb -tui ' + project_name + '.elf -n -x gdbinit_avr')
+env.AlwaysBuild(gdb)
 
 
 # suppress reliquat files
