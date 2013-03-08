@@ -4,6 +4,7 @@ generate the eeprom image for egere minuterie frames
 
 
 from frame import *
+from frame import Frame
 
 
 CONE_SERVO = 0xaa
@@ -15,6 +16,10 @@ SERVO_OPEN_POS = 0x00
 SERVO_CLOSE_POS = 0xff
 
 TIME_OUT_SAVE = 0x00
+
+I2C_SELF_ADDR = Frame.I2C_SELF_ADDR
+T_ID = Frame.T_ID
+CMD = Frame.CMD
 
 
 # slots number
