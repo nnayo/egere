@@ -58,7 +58,8 @@ elf = env.Program(project_name + '.elf', minut, LIBS = libs, LIBPATH = libpath)
 env.Default(elf)
 
 # autogen eeprom_frame.c file
-env.Depends('eeprom_frames.c', './gen_eeprom_frames.py eeprom_frames.c')
+env.Depends('eeprom_frames.c', './gen_eeprom_frames.py')
+env.Command('eeprom_frames.c', '', './gen_eeprom_frames.py eeprom_frames.c')
 
 # generate a file with code and source
 env.Alias('lis', project_name + '.elf', 'avr-objdump -h -SxD ' + project_name + '.elf > ' + project_name + '.lis')
@@ -76,7 +77,8 @@ env.AlwaysBuild(load)
 
 
 # download the frames in eeprom
-env.Depends('minut_eeprom_frames.hex', 'avr-objcopy --only-section .eeprom ' + project_name + '.hex' + 'minut_eeprom_frames.hex')
+env.Depends('minut_eeprom_frames.hex', 'avr-objcopy')
+env.Command('minut_eeprom_frames.hex', '', 'avr-objcopy --only-section .eeprom ' + project_name + '.hex' + 'minut_eeprom_frames.hex')
 env.Alias('eeprom', 'minut_eeprom_frames.hex', 'avrdude -V -c arduino -p ATMEGA328P -D -P /dev/ttyACM0 -b 57600 -U eeprom:w:minut_eeprom_frames.hex:i')
 env.AlwaysBuild('eeprom')
 
@@ -87,8 +89,13 @@ env.AlwaysBuild('term')
 
 
 # test with simavr
-run = env.Alias('run', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf -ee minut_eeprom_frames.hex')
+run = env.Alias('run', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf > log')
 env.AlwaysBuild(run)
+
+
+# extract frames from gtkwave_trace.vcd file
+env.Alias('log', 'gtkwave_trace.vcd', '~/TRoll/projects/interface_server/streamer.py localhost:7777 gtkwave_trace.vcd UDR0& ~/TRoll/projects/interface_server/onflight_decode.py localhost:7777')
+env.AlwaysBuild('log')
 
 
 # test with simavr & avr-gdb
@@ -97,12 +104,12 @@ env.AlwaysBuild(run)
 # launch it with:
 # ./obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/vol/minut/minut.elf g
 
-sim = env.Alias('sim', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -g -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf -ee minut_eeprom_frames.hex')
-env.AlwaysBuild(sim)
-sim2 = env.Alias('sim2', project_name + '.elf', '~/TRoll/projects/simavr/examples/board_i2c_mpu6050/obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/vol/minut/minut.elf g')
-env.AlwaysBuild(sim2)
-gdb = env.Alias('gdb', project_name + '.elf', 'avr-gdb ' + project_name + '.elf -n -x gdbinit_avr')
-env.AlwaysBuild(gdb)
+env.Alias('sim', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -g -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf')
+env.AlwaysBuild('sim')
+env.Alias('sim2', project_name + '.elf', '~/TRoll/projects/simavr/examples/board_i2c_mpu6050/obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/vol/minut/minut.elf g')
+env.AlwaysBuild('sim2')
+env.Alias('gdb', project_name + '.elf', 'avr-gdb ' + project_name + '.elf -n -x gdbinit_avr')
+env.AlwaysBuild('gdb')
 
 
 # suppress reliquat files
