@@ -1,12 +1,16 @@
+#!/usr/bin/pytho
+# -*- coding: latin-1 -*-
+
 project_name = 'minut'
 
 
 minut	= [
-	'main.c',		\
-	'minut.c',		\
-	'servo.c',		\
-	'mpu6050.c',	\
-	'tk-off.c',		\
+	'main.c',			\
+	'minut.c',			\
+	'servo.c',			\
+	'mpu6050.c',		\
+	'tk-off.c',			\
+	'eeprom_frames.c',	\
 ]
 
 import os
@@ -53,8 +57,11 @@ SConscript([os.environ['TROLL_PROJECTS'] + '/scalp/SConscript', os.environ['TROL
 elf = env.Program(project_name + '.elf', minut, LIBS = libs, LIBPATH = libpath)
 env.Default(elf)
 
+# autogen eeprom_frame.c file
+env.Depends('eeprom_frames.c', './gen_eeprom_frames.py eeprom_frames.c')
+
 # generate a file with code and source
-env.Alias('lis', project_name + '.elf', 'avr-objdump -h -S ' + project_name + '.elf > ' + project_name + '.lis')
+env.Alias('lis', project_name + '.elf', 'avr-objdump -h -SxD ' + project_name + '.elf > ' + project_name + '.lis')
 env.AlwaysBuild('lis')
 
 
@@ -69,7 +76,8 @@ env.AlwaysBuild(load)
 
 
 # download the frames in eeprom
-env.Alias('eeprom', '', 'avrdude -P usb -p ' + mcu_target + ' -c dragon_jtag -D -U eeprom:w:' + project_name + '.bin:r')
+env.Depends('minut_eeprom_frames.hex', 'avr-objcopy --only-section .eeprom ' + project_name + '.hex' + 'minut_eeprom_frames.hex')
+env.Alias('eeprom', 'minut_eeprom_frames.hex', 'avrdude -V -c arduino -p ATMEGA328P -D -P /dev/ttyACM0 -b 57600 -U eeprom:w:minut_eeprom_frames.hex:i')
 env.AlwaysBuild('eeprom')
 
 
@@ -84,9 +92,16 @@ env.AlwaysBuild(run)
 
 
 # test with simavr & avr-gdb
+# a dedicated version of simavr with MPU-6050 'simulation' is at:
+# ~/TRoll/projects/simavr/examples/board_i2c_mpu6050
+# launch it with:
+# ./obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/vol/minut/minut.elf g
+
 sim = env.Alias('sim', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -g -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf -ee minut_eeprom_frames.hex')
 env.AlwaysBuild(sim)
-gdb = env.Alias('gdb', project_name + '.elf', 'avr-gdb -tui ' + project_name + '.elf -n -x gdbinit_avr')
+sim2 = env.Alias('sim2', project_name + '.elf', '~/TRoll/projects/simavr/examples/board_i2c_mpu6050/obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/vol/minut/minut.elf g')
+env.AlwaysBuild(sim2)
+gdb = env.Alias('gdb', project_name + '.elf', 'avr-gdb ' + project_name + '.elf -n -x gdbinit_avr')
 env.AlwaysBuild(gdb)
 
 
