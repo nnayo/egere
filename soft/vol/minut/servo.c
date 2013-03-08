@@ -96,24 +96,24 @@ static void SERVO_aero_on(s8 position)
 static void SERVO_aero_off(void)
 {
 	// setting the compare value to 0, ensure output pin is driven lo
-	TMR1_compare_set(TMR1_A, 0);
+	TMR1_compare_set(TMR1_B, 0);
 }
 
 
 static void SERVO_drive(u8 servo, u8 sense)
 {
 	switch (servo) {
-	case 0xaa:
+	case FR_SERVO_CONE:
 		switch (sense) {
-		case 0x09:	// open
+		case FR_SERVO_OPEN:	// open
 			SERVO_cone_on(SERVO.cone.open_pos);
 			break;
 
-		case 0xc1:	// close
+		case FR_SERVO_CLOSE:	// close
 			SERVO_cone_on(SERVO.cone.close_pos);
 			break;
 
-		case 0x0f:
+		case FR_SERVO_OFF:
 			SERVO_cone_off();
 			break;
 
@@ -122,17 +122,17 @@ static void SERVO_drive(u8 servo, u8 sense)
 		}
 		break;
 
-	case 0x55:
+	case FR_SERVO_AERO:
 		switch (sense) {
-		case 0x09:	// open
+		case FR_SERVO_OPEN:	// open
 			SERVO_aero_on(SERVO.aero.open_pos);
 			break;
 
-		case 0xc1:	// close
+		case FR_SERVO_CLOSE:	// close
 			SERVO_aero_on(SERVO.aero.close_pos);
 			break;
 
-		case 0x0f:
+		case FR_SERVO_OFF:
 			SERVO_aero_off();
 			break;
 
@@ -150,11 +150,11 @@ static void SERVO_drive(u8 servo, u8 sense)
 static void SERVO_cone_save(frame_t* fr)
 {
 	switch ( fr->argv[2] ) {
-	case 0x00:	// open position
+	case FR_SERVO_OPEN:	// open position
 		SERVO.cone.open_pos = fr->argv[3];
 		break;
 
-	case 0xff:	// closed position
+	case FR_SERVO_CLOSE:	// closed position
 		SERVO.cone.close_pos = fr->argv[3];
 		break;
 
@@ -169,11 +169,11 @@ static void SERVO_cone_save(frame_t* fr)
 static void SERVO_cone_read(frame_t* fr)
 {
 	switch ( fr->argv[2] ) {
-	case 0x00:	// open position
+	case FR_SERVO_OPEN:	// open position
 		fr->argv[3] = SERVO.cone.open_pos;
 		break;
 
-	case 0xff:	// closed position
+	case FR_SERVO_CLOSE:	// closed position
 		fr->argv[3] = SERVO.cone.close_pos;
 		break;
 
@@ -187,11 +187,11 @@ static void SERVO_cone_read(frame_t* fr)
 static void SERVO_aero_save(frame_t* fr)
 {
 	switch ( fr->argv[2] ) {
-	case 0x00:	// open position
+	case FR_SERVO_OPEN:	// open position
 		SERVO.aero.open_pos = fr->argv[3];
 		break;
 
-	case 0xff:	// closed position
+	case FR_SERVO_CLOSE:	// closed position
 		SERVO.aero.close_pos = fr->argv[3];
 		break;
 
@@ -206,11 +206,11 @@ static void SERVO_aero_save(frame_t* fr)
 static void SERVO_aero_read(frame_t* fr)
 {
 	switch ( fr->argv[2] ) {
-	case 0x00:	// open position
+	case FR_SERVO_OPEN:	// open position
 		fr->argv[3] = SERVO.aero.open_pos;
 		break;
 
-	case 0xff:	// closed position
+	case FR_SERVO_CLOSE:	// closed position
 		fr->argv[3] = SERVO.aero.close_pos;
 		break;
 
@@ -224,13 +224,13 @@ static void SERVO_aero_read(frame_t* fr)
 static void SERVO_position(frame_t* fr)
 {
 	switch ( fr->argv[0] ) {
-	case 0xaa:
+	case FR_SERVO_CONE:
 		switch ( fr->argv[1] ) {
-		case 0x00:	// save
+		case FR_SERVO_SAVE:	// save
 			SERVO_cone_save(fr);
 			break;
 
-		case 0xff:	// read
+		case FR_SERVO_READ:	// read
 			SERVO_cone_read(fr);
 			break;
 
@@ -241,13 +241,13 @@ static void SERVO_position(frame_t* fr)
 		}
 		break;
 
-	case 0x55:
+	case FR_SERVO_AERO:
 		switch ( fr->argv[1] ) {
-		case 0x00:	// save
+		case FR_SERVO_SAVE:	// save
 			SERVO_aero_save(fr);
 			break;
 
-		case 0xff:	// read
+		case FR_SERVO_READ:	// read
 			SERVO_aero_read(fr);
 			break;
 
