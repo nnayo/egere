@@ -86,6 +86,7 @@ struct {
 
 	frame_t out_fr;		// frame for the sending thread
 
+	u8 started:1;		// signal to application can be started
 } MNT;
 
 
@@ -632,6 +633,11 @@ static PT_THREAD( MNT_check_commands(pt_t* pt) )
 	// as long as there are no command
 	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MNT.cmds_fifo, &MNT.cmd_fr));
 
+	// silently ignore incoming response
+	if ( MNT.cmd_fr.resp == 1 ) {
+		PT_RESTART(pt);
+	}
+
 	switch (MNT.cmd_fr.cmde) {
 		case FR_TAKE_OFF:
 			// generate take-off event
@@ -648,6 +654,13 @@ static PT_THREAD( MNT_check_commands(pt_t* pt) )
 			}
 
 			// don't respond, response will be done by CMN
+			PT_RESTART(pt);
+			break;
+
+		case FR_APPLI_START:
+			MNT.started = 1;
+
+			// don't respond
 			PT_RESTART(pt);
 			break;
 
@@ -715,7 +728,7 @@ void MNT_init(void)
 	FIFO_init(&MNT.out_fifo, MNT.out_buf, NB_OUT_FR, sizeof(frame_t));
 
 	// register to dispatcher
-	MNT.interf.channel = 4;
+	MNT.interf.channel = 7;
 	MNT.interf.cmde_mask = _CM(FR_TAKE_OFF) | _CM(FR_MINUT_TIME_OUT) | _CM(FR_STATE);
 	MNT.interf.queue = &MNT.cmds_fifo;
 	DPT_register(&MNT.interf);
@@ -728,6 +741,9 @@ void MNT_init(void)
 	// prevent any time-out
 	MNT.time_out = TIME_MAX;
 	MNT.sampling_rate = SAMPLING_START;
+
+	// the application start signal shall be received
+	MNT.started = 0;
 }
 
 
@@ -741,26 +757,30 @@ void MNT_run(void)
 	//
 	//  each generated event is stored in a fifo
 
-	// check if door has changed
-	(void)PT_SCHEDULE(MNT_check_cone(&MNT.pt_chk_cone));
+	if ( MNT.started ) {
+		// check if door has changed
+		(void)PT_SCHEDULE(MNT_check_cone(&MNT.pt_chk_cone));
 
-	// check if a time-out has elapsed
-	(void)PT_SCHEDULE(MNT_check_time_out(&MNT.pt_chk_time_out));
+		// check if a time-out has elapsed
+		(void)PT_SCHEDULE(MNT_check_time_out(&MNT.pt_chk_time_out));
+	}
 
 	// treat each incoming commands
 	(void)PT_SCHEDULE(MNT_check_commands(&MNT.pt_chk_cmds));
 
-	// treat each new event
-	mnt_event_t ev;
+	if ( MNT.started ) {
+		// treat each new event
+		mnt_event_t ev;
 
-	// if there is an event
-	if ( OK == FIFO_get(&MNT.ev_fifo, &ev) ) {
-		// update the state machine
-		STM_event(&MNT.stm, ev);
+		// if there is an event
+		if ( OK == FIFO_get(&MNT.ev_fifo, &ev) ) {
+			// update the state machine
+			STM_event(&MNT.stm, ev);
+		}
+
+		// update state machine
+		STM_run(&MNT.stm);
 	}
-
-	// update state machine
-	STM_run(&MNT.stm);
 
 	// send outgoing frame(s) if any
 	(void)PT_SCHEDULE(MNT_send_frame(&MNT.pt_out));

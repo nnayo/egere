@@ -11,9 +11,10 @@ CONE_SERVO = 0xaa
 CONE_AERO = 0x55
 
 SERVO_SAVE = 0x00
+SERVO_READ = 0xff
 
-SERVO_OPEN_POS = 0x00
-SERVO_CLOSE_POS = 0xff
+SERVO_OPEN_POS = 0x09
+SERVO_CLOSE_POS = 0xc1
 
 TIME_OUT_SAVE = 0x00
 
@@ -49,6 +50,9 @@ slots = [
 
 		# set testing take-off detection threshold (200 * 10ms, 8 * 0.1G)
 		#take_off_thres(I2C_SELF_ADDR, I2C_SELF_ADDR, T_ID, CMD, 200, 8),
+
+		# set flight take-off detection threshold (10 * 10ms, 30 * 0.1G)
+		appli_start(I2C_SELF_ADDR, I2C_SELF_ADDR, T_ID, CMD),
 	],
 
 	#--------------------------------

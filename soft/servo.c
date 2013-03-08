@@ -273,7 +273,7 @@ static PT_THREAD( SERVO_cmde(pt_t* pt) )
 	PT_BEGIN(pt);
 
 	// if no incoming frame is available
-	PT_WAIT_UNTIL(pt, FIFO_get(&SERVO.in, &SERVO.cmd_fr) );
+	PT_WAIT_UNTIL(pt, OK == FIFO_get(&SERVO.in, &SERVO.cmd_fr) );
 
 	// if it is a response
 	if (SERVO.cmd_fr.resp) {
@@ -352,7 +352,7 @@ void SERVO_init(void)
 	FIFO_init(&SERVO.in, &SERVO.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
 	FIFO_init(&SERVO.out, &SERVO.out_buf, OUT_FIFO_SIZE, sizeof(frame_t));
 
-	SERVO.interf.channel = 5;
+	SERVO.interf.channel = 9;
 	SERVO.interf.cmde_mask = _CM(FR_MINUT_SERVO_CMD) | _CM(FR_MINUT_SERVO_INFO);
 	SERVO.interf.queue = &SERVO.in;
 	DPT_register(&SERVO.interf);

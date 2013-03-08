@@ -297,7 +297,7 @@ void TKF_init(void)
 	// init
 	FIFO_init(&TKF.in_fifo, &TKF.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
 
-	TKF.interf.channel = 5;
+	TKF.interf.channel = 10;
 	TKF.interf.cmde_mask = _CM(FR_TAKE_OFF_THRES) | _CM(FR_DATA_ACC) | _CM(FR_DATA_GYR);
 	TKF.interf.queue = &TKF.in_fifo;
 	DPT_register(&TKF.interf);

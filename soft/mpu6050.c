@@ -101,6 +101,9 @@ static PT_THREAD( MPU_thread(pt_t* pt) )
 
 	PT_BEGIN(pt);
 
+	// wait application start signal
+	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr) && fr.cmde != FR_APPLI_START);
+
 	// hard init
 	DPT_lock(&MPU.interf);
 
@@ -242,7 +245,7 @@ void MPU_init(void)
 	// init
 	FIFO_init(&MPU.in_fifo, &MPU.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
 
-	MPU.interf.channel = 5;
+	MPU.interf.channel = 8;
 	MPU.interf.cmde_mask = _CM(FR_I2C_READ) | _CM(FR_I2C_WRITE);
 	MPU.interf.queue = &MPU.in_fifo;
 	DPT_register(&MPU.interf);
