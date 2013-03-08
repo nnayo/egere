@@ -125,15 +125,27 @@ const struct avr_mmcu_vcd_trace_t simavr_conf[]  _MMCU_ = {
 	{ AVR_MCU_VCD_SYMBOL("led_alive"), .mask = _BV(PORTB5), .what = (void*)&PORTB, },
 	{ AVR_MCU_VCD_SYMBOL("led_open"), .mask = _BV(PORTB4), .what = (void*)&PORTB, },
 	{ AVR_MCU_VCD_SYMBOL("cone_open_switch"), .mask = _BV(PORTB3), .what = (void*)&PINB, },
+
 	{ AVR_MCU_VCD_SYMBOL("TWDR"), .what = (void*)&TWDR, },
-	{ AVR_MCU_VCD_SYMBOL("TCNT1"), .what = (void*)&TCNT1, },
-	{ AVR_MCU_VCD_SYMBOL("OCR1AL"), .what = (void*)&OCR1AL, },
-	{ AVR_MCU_VCD_SYMBOL("OCR1AH"), .what = (void*)&OCR1AH, },
-	{ AVR_MCU_VCD_SYMBOL("OCR1BL"), .what = (void*)&OCR1BL, },
-	{ AVR_MCU_VCD_SYMBOL("OCR1BH"), .what = (void*)&OCR1BH, },
+
 	{ AVR_MCU_VCD_SYMBOL("TCCR1A"), .what = (void*)&TCCR1A, },
 	{ AVR_MCU_VCD_SYMBOL("TCCR1B"), .what = (void*)&TCCR1B, },
+	{ AVR_MCU_VCD_SYMBOL("TCCR1C"), .what = (void*)&TCCR1C, },
+	{ AVR_MCU_VCD_SYMBOL("TCNT1H"), .what = (void*)&TCNT1H, },
+	{ AVR_MCU_VCD_SYMBOL("TCNT1L"), .what = (void*)&TCNT1L, },
+	{ AVR_MCU_VCD_SYMBOL("OCR1AH"), .what = (void*)&OCR1AH, },
+	{ AVR_MCU_VCD_SYMBOL("OCR1AL"), .what = (void*)&OCR1AL, },
+	{ AVR_MCU_VCD_SYMBOL("OCR1BH"), .what = (void*)&OCR1BH, },
+	{ AVR_MCU_VCD_SYMBOL("OCR1BL"), .what = (void*)&OCR1BL, },
+
+	{ AVR_MCU_VCD_SYMBOL("TIMSK1"), .what = (void*)&TIMSK1, },
+	{ AVR_MCU_VCD_SYMBOL("TIFR1"), .what = (void*)&TIFR1, },
+
 	{ AVR_MCU_VCD_SYMBOL("TCNT2"), .what = (void*)&TCNT2, },
+
+	{ AVR_MCU_VCD_SYMBOL("UDR0"), .what = (void*)&UDR0, },
+	{ AVR_MCU_VCD_SYMBOL("UDRIE0"), .mask = _BV(UDRIE0), .what = (void*)&UCSR0B, },
+	{ AVR_MCU_VCD_SYMBOL("UCSR0A"), .what = (void*)&UCSR0A, },
 };
 
 
@@ -208,7 +220,7 @@ int main(void)
 //	RCF_init();
 //	DNA_init(DNA_MINUT);
 	CMN_init();
-//	NAT_init();
+	NAT_init();
 //	LOG_init();
 //	TSN_init();
 //	ALV_init();
@@ -233,7 +245,7 @@ int main(void)
 //		RCF_run();
 //		DNA_run();
 		CMN_run();
-//		NAT_run();
+		NAT_run();
 //		LOG_run();
 //		TSN_run();
 //		ALV_run();
@@ -244,7 +256,7 @@ int main(void)
 		MPU_run();
 		TKF_run();
 
-		if ( TIME_get() > 10 * TIME_1_SEC ) {
+		if ( TIME_get() > 15 * TIME_1_SEC ) {
 			cli();
 #include <avr/sleep.h>
 			sleep_mode();
