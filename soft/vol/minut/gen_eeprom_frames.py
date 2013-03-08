@@ -13,12 +13,16 @@
 # elsewhere in EEPROM.
 #
 
+import sys
+
 import frame
+from frame import Frame
 
 import minut
 
 
-def compute_EEPROM(module):
+def compute_EEPROM(module, fd):
+	"""compute the content of eeprom memmory for the given module"""
 	f = frame.frame()
 	fr_size = len(f)
 
@@ -26,7 +30,7 @@ def compute_EEPROM(module):
 	mem_map_slot = []			# slots memory map
 	mem_map_ext = []			# extended zone memory map (starting at end of slots mem)
 
-	print("-> %s : " % module.__name__)
+	fd.write("//-> %s :\n" % module.__name__)
 	#print module.slots
 	if len(module.slots) != module.slots_nb:
 		raise Exception("slots number inconsistant between declaration and instantiation")
@@ -40,7 +44,7 @@ def compute_EEPROM(module):
 			# and copy it in the current slot
 			offs_msb = (offset & 0xff00 ) >> 8
 			offs_lsb = (offset & 0x00ff ) >> 0
-			relay = frame.container(frame.I2C_SELF_ADDR, frame.I2C_SELF_ADDR, None, frame.CMD, offs_msb, offs_lsb, len(s), frame.container.EEPROM)
+			relay = frame.container(Frame.I2C_SELF_ADDR, Frame.I2C_SELF_ADDR, None, Frame.CMD, offs_msb, offs_lsb, len(s), frame.container.EEPROM)
 			mem_map_slot.append(relay)
 			#print 'offset = 0x%04x' % offset
 
@@ -59,51 +63,43 @@ def compute_EEPROM(module):
 	mem_map.extend(mem_map_slot)
 	mem_map.extend(mem_map_ext)
 
+	# fill the C struct
 	for i in range(len(mem_map)):
 		if i == module.slots_nb:
-			print("\n\t-- start of extended zone --")
+			fd.write("\n\t//-- start of extended zone --\n")
 
-		print "\t0x%02x (%3d):" % (i * fr_size, i * fr_size),
+		fd.write("\t//0x%02x (%3d):" % (i * fr_size, i * fr_size))
 		#print mem_map[i]
 		for j in range(fr_size):
 			#print mem_map[i][j],
-			print " 0x%02x" % mem_map[i][j],
+			fd.write(" 0x%02x" % mem_map[i][j])
 
-		print ' : %s' % mem_map[i].cmde_name()
+		fd.write(' : %s\n' % mem_map[i].cmde_name())
+		fd.write('\t{ ')
 
-	print
+		fd.write('.dest = 0x%02x, ' % mem_map[i].dest)
+		fd.write('.orig = 0x%02x, ' % mem_map[i].orig)
+		fd.write('.t_id = 0x%02x, ' % mem_map[i].t_id)
+		fd.write('.cmde = 0x%02x, ' % mem_map[i].cmde)
+		fd.write('.status = 0x%02x, ' % mem_map[i].stat)
+		fd.write('.argv = {')
+		for j in range(fr_size - 5):
+			fd.write('0x%02x, ' % mem_map[i][5 + j])
+		fd.write('}\n')
 
-	# create the .hex file to be written in EEPROM
-	fd = open(module.__name__ + '_eeprom_frames.hex', 'w')
-	fd.write(':02000004008179\n')			# Extended Linear Address Record: offset 0x00810000
-	for i in range(len(mem_map)):
-		checksum = 0x00
-
-		fd.write(':%02x' % fr_size)			# start code + byte count
-		checksum += fr_size
-
-		addr = i * fr_size
-		fd.write('%04x' % addr)				# address
-		checksum += (addr & 0xff00) >> 8
-		checksum += (addr & 0x00ff) >> 0
-
-		fd.write('00')						# record type 00 : data record
-		checksum += 0x00
-
-		for j in range(fr_size):			# data
-			val = mem_map[i][j]
-			fd.write('%02x' % val)
-			checksum += val
-
-		checksum &= 0xff					# checksum
-		checksum = 0x100 - checksum
-		fd.write('%02x' % checksum)
-		fd.write('\n')
-
-	fd.close()
+		fd.write('\t},\n')
 
 
 #----------------------------
 # main
 if __name__ == '__main__':
-	compute_EEPROM(minut)
+	fd = open(sys.argv[1], 'w')
+	fd.write('#include "dispatcher.h"\n')
+	fd.write('\n')
+	fd.write('const frame_t eeprom_frames[] __attribute__ ((section (".eeprom")))= {\n')
+
+	compute_EEPROM(minut, fd)
+
+	fd.write('};')
+	fd.close()
+
