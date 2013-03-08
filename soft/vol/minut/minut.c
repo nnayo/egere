@@ -12,6 +12,9 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 
+//for debug
+#define static
+
 
 // ------------------------------------------
 // private definitions
@@ -21,13 +24,14 @@
 #define NB_CMDS		3
 #define NB_OUT_FR	4
 
-#define CONE_DDR		DDRB
-#define CONE			PORTB
-#define CONE_PIN		PB3
-#define CONE_STATE_CLOSED		0
-#define CONE_STATE_OPEN	_BV(CONE_PIN)
+#define CONE_DDR			DDRB
+#define CONE				PORTB
+#define CONE_PIN			PB3
+#define CONE_STATE_CLOSED	0
+#define CONE_STATE_OPEN		_BV(CONE_PIN)
 
-#define SAMPLING_PERIOD	(100 * TIME_1_MSEC)
+#define SAMPLING_START		(2 * TIME_1_SEC)
+#define SAMPLING_PERIOD		(100 * TIME_1_MSEC)
 
 
 // ------------------------------------------
@@ -272,17 +276,17 @@ static u8 init_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
-	// led alive 1s
-	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 100)
+	// led alive 0.25s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 25)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -299,7 +303,7 @@ static u8 cone_opening_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone open
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x09)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OPEN)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -319,17 +323,22 @@ static u8 aero_opening_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde aero open
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x09)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OPEN)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// time-out 5s
 	MNT.time_out = TIME_get() + 5 * TIME_1_SEC;
+
+	// led alive 0.5s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 50)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -344,7 +353,7 @@ static u8 aero_open_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde aero stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -374,12 +383,17 @@ static u8 cone_closed_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone close
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0xc1)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_CLOSE)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// time-out 1s
 	MNT.time_out = TIME_get() + 1 * TIME_1_SEC;
+
+	// led alive 0.1s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 10)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -394,7 +408,12 @@ static u8 waiting_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
+	// led alive 1s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 100)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -411,12 +430,12 @@ static u8 flight_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone close
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0xc1)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_CLOSE)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero close
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0xc1)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_CLOSE)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -441,12 +460,12 @@ static u8 cone_open_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone open
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x09)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OPEN)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -471,12 +490,12 @@ static u8 braking_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero open
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x09)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OPEN)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -496,12 +515,12 @@ static u8 parachute_action(pt_t* pt, void* args)
 	PT_BEGIN(pt);
 
 	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0xaa, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// cmde aero stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, 0x55, 0x0f)
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -708,7 +727,7 @@ void MNT_init(void)
 
 	// prevent any time-out
 	MNT.time_out = TIME_MAX;
-	MNT.sampling_rate = 0;
+	MNT.sampling_rate = SAMPLING_START;
 }
 
 
