@@ -217,13 +217,9 @@ int main(void)
 	// init every common module
 	DPT_init();
 	BSC_init();
-//	RCF_init();
-//	DNA_init(DNA_MINUT);
 	CMN_init();
 	NAT_init();
 //	LOG_init();
-//	TSN_init();
-//	ALV_init();
 	CPU_init();
 
 	// program and start timer2 for interrupt on compare every 10 ms
@@ -231,7 +227,7 @@ int main(void)
 	TMR2_start();
 
 	MNT_init();
-	SERVO_init();
+	SRV_init();
 	MPU_init();
 	TKF_init();
 
@@ -242,17 +238,13 @@ int main(void)
 		// run every common module
 		DPT_run();
 		BSC_run();
-//		RCF_run();
-//		DNA_run();
 		CMN_run();
 		NAT_run();
 //		LOG_run();
-//		TSN_run();
-//		ALV_run();
 		CPU_run();
 
 		MNT_run();
-		SERVO_run();
+		SRV_run();
 		MPU_run();
 		TKF_run();
 
