@@ -94,7 +94,7 @@ env.AlwaysBuild(run)
 
 
 # extract frames from gtkwave_trace.vcd file
-env.Alias('log', 'gtkwave_trace.vcd', '~/TRoll/projects/interface_server/streamer.py localhost:7777 gtkwave_trace.vcd UDR0& ~/TRoll/projects/interface_server/onflight_decode.py localhost:7777')
+env.Alias('log', 'gtkwave_trace.vcd', '~/TRoll/projects/interface_server/streamer.py localhost:7777 gtkwave_trace.vcd UDR0& ~/TRoll/projects/interface_server/onflight_decode.py localhost:7777 > decoded.log')
 env.AlwaysBuild('log')
 
 
@@ -102,11 +102,11 @@ env.AlwaysBuild('log')
 # a dedicated version of simavr with MPU-6050 'simulation' is at:
 # ~/TRoll/projects/simavr/examples/board_i2c_mpu6050
 # launch it with:
-# ./obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/vol/minut/minut.elf g
+# ./obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/minut.elf g
 
 env.Alias('sim', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -g -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf')
 env.AlwaysBuild('sim')
-env.Alias('sim2', project_name + '.elf', '~/TRoll/projects/simavr/examples/board_i2c_mpu6050/obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/vol/minut/minut.elf g')
+env.Alias('sim2', project_name + '.elf', '~/TRoll/projects/simavr/examples/board_i2c_mpu6050/obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/minut.elf > log')
 env.AlwaysBuild('sim2')
 env.Alias('gdb', project_name + '.elf', 'avr-gdb ' + project_name + '.elf -n -x gdbinit_avr')
 env.AlwaysBuild('gdb')
