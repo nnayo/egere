@@ -26,13 +26,14 @@ struct {
 	pt_t pt;					// pt for sending thread
 	dpt_interface_t interf;		// interface to the dispatcher
 
-	frame_t in_buf[IN_FIFO_SIZE];
+	frame_t in_buf[IN_FIFO_SIZE]; // incoming buffer and fifo for acquisitions or commands
 	fifo_t in_fifo;
-	frame_t in_fr;				// incoming frame for acquisitions or commands
+
+	frame_t fr;					// computation frame
 
 	u32 thr_time_out;			// time-out for threshold duration
 	u8 thr_duration;			// threshold duration in 0.1s
-	u16 acc_thr;				// acceleration threshold in 0.1G
+	s16 acc_thr;				// acceleration threshold in 0.1G
 	u8 thr_flag;
 
 	float acc_x;
@@ -170,26 +171,16 @@ static void TKF_Madgwick(void)
 // update threshold configuration from incoming command
 static void TKF_config(void)
 {
-	TKF.thr_duration = TKF.in_fr.argv[0];	// threshold duration in 0.1s
-	TKF.acc_thr = TKF.in_fr.argv[1];		// acceleration threshold in 0.1G
+	TKF.thr_duration = TKF.fr.argv[0];	// threshold duration in 0.1s
+	TKF.acc_thr = TKF.fr.argv[1];		// acceleration threshold in 0.1G
 }
 
 
 // compute if take-off threshold is triggered
 static u8 TKF_compute(void)
 {
-	s16 acc_x;
-
-	// extract acceleration level
-	acc_x = TKF.in_fr.argv[0] << 8;
-	acc_x += TKF.in_fr.argv[1] << 0;
-
-	// scale acceleration
-	acc_x *= 11;
-	acc_x /= 10;
-
 	// if behond threshold
-	if ( acc_x < TKF.acc_thr ) {
+	if ( (s16)(10. * TKF.acc_x) < TKF.acc_thr ) {
 		// reset time_out
 		TKF.thr_time_out = TIME_MAX;
 		return KO;
@@ -210,77 +201,83 @@ static u8 TKF_compute(void)
 }
 
 
+	static s32 acc;
 static PT_THREAD( TKF_thread(pt_t* pt) )
 {
 	frame_t fr;
-	s16 acc;
 	s16 gyr;
 
 	PT_BEGIN(pt);
 
 	// wait incoming acquisitions and commands
-	PT_WAIT_UNTIL(pt, OK == FIFO_get(&TKF.in_fifo, &TKF.in_fr));
+	PT_WAIT_UNTIL(pt, OK == FIFO_get(&TKF.in_fifo, &TKF.fr));
 
 	// responses are ignored
-	if ( TKF.in_fr.resp ) {
+	if ( TKF.fr.resp ) {
 		PT_RESTART(pt);
 	}
 
-	switch(TKF.in_fr.cmde) {
+	switch(TKF.fr.cmde) {
 	// configuration of the threshold
 	case FR_TAKE_OFF_THRES:
 		TKF_config();
-		PT_RESTART(pt);
+
+		// send the response
+		DPT_lock(&TKF.interf);
+		u8 swap = TKF.fr.dest;
+		TKF.fr.dest = TKF.fr.orig;
+		TKF.fr.orig = swap;
+		TKF.fr.resp = 1;
+		PT_WAIT_UNTIL(pt, DPT_tx(&TKF.interf, &TKF.fr));
+		DPT_unlock(&TKF.interf);
+
 		break;
 
 	// acceleration data
 	case FR_DATA_ACC:
-		acc = TKF.in_fr.argv[0] << 8;
-		acc += TKF.in_fr.argv[1] << 0;
-		TKF.acc_x = (float)acc;
+		acc = TKF.fr.argv[0] << 8;
+		acc |= TKF.fr.argv[1]; acc <<= 0;
+		acc *= 16;	acc /= 1 << 15;
+		TKF.acc_x = acc;
 
-		acc = TKF.in_fr.argv[2] << 8;
-		acc += TKF.in_fr.argv[3] << 0;
-		TKF.acc_y = (float)acc;
+		acc = TKF.fr.argv[2] << 8;
+		acc += TKF.fr.argv[3] << 0;
+		TKF.acc_y = acc * 16 / (1 << 15);
 
-		acc = TKF.in_fr.argv[4] << 8;
-		acc += TKF.in_fr.argv[5] << 0;
-		TKF.acc_z = (float)acc;
+		acc = TKF.fr.argv[4] << 8;
+		acc += TKF.fr.argv[5] << 0;
+		TKF.acc_z = acc * 16. / (1 << 15);
 
-		if ( KO == TKF_compute()) {
-			PT_RESTART(pt);
+		if ( OK == TKF_compute() ) {
+			// send the take-off frame
+			DPT_lock(&TKF.interf);
+			PT_WAIT_UNTIL(pt, frame_set_0(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_TAKE_OFF, 0)
+					&& DPT_tx(&TKF.interf, &fr));
+			DPT_unlock(&TKF.interf);
 		}
+
 		break;
 
 	// rotation data
 	case FR_DATA_GYR:
-		gyr = TKF.in_fr.argv[0] << 8;
-		gyr += TKF.in_fr.argv[1] << 0;
-		TKF.gyr_x = (float)gyr;
+		gyr = TKF.fr.argv[0] << 8;
+		gyr += TKF.fr.argv[1] << 0;
+		TKF.gyr_x = gyr * 200. / (1 << 15);
 
-		gyr = TKF.in_fr.argv[2] << 8;
-		gyr += TKF.in_fr.argv[3] << 0;
-		TKF.gyr_y = (float)gyr;
+		gyr = TKF.fr.argv[2] << 8;
+		gyr += TKF.fr.argv[3] << 0;
+		TKF.gyr_y = gyr * 200. / (1 << 15);
 
-		gyr = TKF.in_fr.argv[4] << 8;
-		gyr += TKF.in_fr.argv[5] << 0;
-		TKF.gyr_z = (float)gyr;
+		gyr = TKF.fr.argv[4] << 8;
+		gyr += TKF.fr.argv[5] << 0;
+		TKF.gyr_z = gyr * 200. / (1 << 15);
 
 		TKF_Madgwick();
-
-		PT_RESTART(pt);
 		break;
 
 	default:
-		PT_RESTART(pt);
 		break;
 	}
-
-	// send the take-off frame
-	DPT_lock(&TKF.interf);
-	PT_WAIT_UNTIL(pt, frame_set_0(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_TAKE_OFF, 0)
-			&& DPT_tx(&TKF.interf, &fr));
-	DPT_unlock(&TKF.interf);
 
 	PT_RESTART(pt);
 
