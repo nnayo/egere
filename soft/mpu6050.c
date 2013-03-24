@@ -65,6 +65,9 @@
 struct {
 	pt_t pt;					// pt for sending thread
 	dpt_interface_t interf;		// interface to the dispatcher
+	u8 started;
+
+	pt_t pt_spawn;				// pt for spawned threads
 
 	frame_t in_buf[IN_FIFO_SIZE];
 	fifo_t in_fifo;
@@ -95,14 +98,12 @@ struct {
 // private functions
 //
 
-static PT_THREAD( MPU_thread(pt_t* pt) )
+
+static PT_THREAD( MPU_init_pt_thread(pt_t* pt) )
 {
 	frame_t fr;
 
 	PT_BEGIN(pt);
-
-	// wait application start signal
-	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr) && fr.cmde != FR_APPLI_START);
 
 	// hard init
 	DPT_lock(&MPU.interf);
@@ -150,6 +151,56 @@ static PT_THREAD( MPU_thread(pt_t* pt) )
 	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
 
 	DPT_unlock(&MPU.interf);
+	PT_EXIT(pt);
+
+	PT_END(pt);
+}
+
+
+static PT_THREAD( MPU_acquisition(pt_t* pt, u8 len, frame_t* fr) )
+{
+	PT_BEGIN(pt);
+
+	// grant access for tx
+	DPT_lock(&MPU.interf);
+
+	// send a frame with the specified length
+	PT_WAIT_UNTIL(pt, frame_set_0(fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_READ, len)
+			&& DPT_tx(&MPU.interf, fr));
+	// wait response
+	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, fr));
+
+	// check it
+	if ( fr->resp != 1 || fr->error != 0 || fr->orig != MPU_I2C_ADDR ) {
+		// on error, retry
+		PT_RESTART(pt);
+	}
+
+	DPT_unlock(&MPU.interf);
+
+	PT_END(pt);
+}
+
+
+static PT_THREAD( MPU_thread(pt_t* pt) )
+{
+	frame_t fr;
+
+	PT_BEGIN(pt);
+
+	// wait application start signal
+	if ( ! MPU.started ) {
+		PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
+		if ( fr.cmde == FR_APPLI_START ) {
+			MPU.started = 1;
+		}
+		else {
+			PT_RESTART(pt);
+		}
+	}
+
+	// check MPU hardware init
+	PT_SPAWN(pt, &MPU.pt_spawn, MPU_init_pt_thread(&MPU.pt_spawn));
 
 	MPU.time_out = 1 * TIME_1_SEC;
 	while (1) {
@@ -174,52 +225,24 @@ static PT_THREAD( MPU_thread(pt_t* pt) )
 		}
 
 		// accel data: read burst from 0x3b to 0x40 (6 regs) 3 x 16-bit MSL first
-		PT_WAIT_UNTIL(pt, frame_set_0(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_READ, 6)
-				&& DPT_tx(&MPU.interf, &fr));
-		// wait response
-		PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
-
-		// check it
-		if ( fr.resp != 1 || fr.error != 0 || fr.orig != MPU_I2C_ADDR ) {
-			// on error, retry
-			DPT_unlock(&MPU.interf);
-			continue;
-		}
+		PT_SPAWN(pt, &MPU.pt_spawn, MPU_acquisition(&MPU.pt_spawn, 6, &fr));
 
 		// save data
-		memcpy(&fr.argv[0], &MPU.data.acc_x_hi, 6);
+		memcpy(&MPU.data.acc_x_hi, &fr.argv[0], 6);
 
 		// temp data: read burst from 0x41 to 0x42 (2 regs) 16-bit MSB first
-		PT_WAIT_UNTIL(pt, frame_set_0(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_READ, 2)
-				&& DPT_tx(&MPU.interf, &fr));
-		// wait response
-		PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
-
-		// check it
-		if ( fr.resp != 1 || fr.error != 0 || fr.orig != MPU_I2C_ADDR ) {
-			// on error, retry
-			DPT_unlock(&MPU.interf);
-			continue;
-		}
+		PT_SPAWN(pt, &MPU.pt_spawn, MPU_acquisition(&MPU.pt_spawn, 2, &fr));
 
 		// save data
-		memcpy(&fr.argv[0], &MPU.data.temp_hi, 2);
+		memcpy(&MPU.data.temp_hi, &fr.argv[0], 2);
 
 		// gyro data: read burst from 0x43 to 0x48 (6 regs) 3 x 16-bit MSL first
-		PT_WAIT_UNTIL(pt, frame_set_0(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_READ, 6)
-				&& DPT_tx(&MPU.interf, &fr));
-		// wait response
-		PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
-
-		// check it
-		if ( fr.resp != 1 || fr.error != 0 || fr.orig != MPU_I2C_ADDR ) {
-			// on error, retry
-			DPT_unlock(&MPU.interf);
-			continue;
-		}
+		PT_SPAWN(pt, &MPU.pt_spawn, MPU_acquisition(&MPU.pt_spawn, 6, &fr));
 
 		// save data
-		memcpy(&fr.argv[0], &MPU.data.gyro_x_hi, 6);
+		memcpy(&MPU.data.gyro_x_hi, &fr.argv[0], 6);
+
+		DPT_lock(&MPU.interf);
 
 		// build and send the acceleration data
 		PT_WAIT_UNTIL(pt, frame_set_6(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_DATA_ACC, 6, MPU.data.acc_x_hi, MPU.data.acc_x_lo, MPU.data.acc_y_hi, MPU.data.acc_y_lo, MPU.data.acc_z_hi, MPU.data.acc_z_lo)
@@ -246,9 +269,12 @@ void MPU_init(void)
 	FIFO_init(&MPU.in_fifo, &MPU.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
 
 	MPU.interf.channel = 8;
-	MPU.interf.cmde_mask = _CM(FR_I2C_READ) | _CM(FR_I2C_WRITE);
+	//MPU.interf.cmde_mask = _CM(FR_I2C_READ) | _CM(FR_I2C_WRITE);
+	MPU.interf.cmde_mask = _CM(FR_I2C_READ) | _CM(FR_I2C_WRITE) | _CM(FR_APPLI_START);
 	MPU.interf.queue = &MPU.in_fifo;
 	DPT_register(&MPU.interf);
+
+	MPU.started = 0;
 
 	PT_INIT(&MPU.pt);
 }
