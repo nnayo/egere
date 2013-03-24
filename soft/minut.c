@@ -729,7 +729,7 @@ void MNT_init(void)
 
 	// register to dispatcher
 	MNT.interf.channel = 7;
-	MNT.interf.cmde_mask = _CM(FR_TAKE_OFF) | _CM(FR_MINUT_TIME_OUT) | _CM(FR_STATE);
+	MNT.interf.cmde_mask = _CM(FR_TAKE_OFF) | _CM(FR_MINUT_TIME_OUT) | _CM(FR_STATE) | _CM(FR_APPLI_START);
 	MNT.interf.queue = &MNT.cmds_fifo;
 	DPT_register(&MNT.interf);
 

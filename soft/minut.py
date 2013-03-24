@@ -51,7 +51,7 @@ slots = [
 		# set testing take-off detection threshold (200 * 10ms, 8 * 0.1G)
 		#take_off_thres(I2C_SELF_ADDR, I2C_SELF_ADDR, T_ID, CMD, 200, 8),
 
-		# set flight take-off detection threshold (10 * 10ms, 30 * 0.1G)
+		# send application start signal
 		appli_start(I2C_SELF_ADDR, I2C_SELF_ADDR, T_ID, CMD),
 	],
 
