@@ -34,7 +34,8 @@ struct {
 	u32 thr_time_out;			// time-out for threshold duration
 	u8 thr_duration;			// threshold duration in 0.1s
 	s16 acc_thr;				// acceleration threshold in 0.1G
-	u8 thr_flag;
+
+	u8 take_off_resp_rxed;		// flag to ensure only 1 take off command is send
 
 	float acc_x;
 	float acc_y;
@@ -212,8 +213,8 @@ static PT_THREAD( TKF_thread(pt_t* pt) )
 	// wait incoming acquisitions and commands
 	PT_WAIT_UNTIL(pt, OK == FIFO_get(&TKF.in_fifo, &TKF.fr));
 
-	// responses are ignored
-	if ( TKF.fr.resp ) {
+	// responses are ignored except FR_TAKE_OFF
+	if ( TKF.fr.resp && TKF.fr.cmde != FR_TAKE_OFF ) {
 		// but don't forget to release the dispatcher
 		DPT_unlock(&TKF.interf);
 
@@ -222,6 +223,13 @@ static PT_THREAD( TKF_thread(pt_t* pt) )
 	}
 
 	switch(TKF.fr.cmde) {
+	// take off response received
+	case FR_TAKE_OFF:
+		if ( TKF.fr.resp ) {
+			TKF.take_off_resp_rxed = 1;
+		}
+		break;
+
 	// configuration of the threshold
 	case FR_TAKE_OFF_THRES:
 		TKF_config();
@@ -253,7 +261,7 @@ static PT_THREAD( TKF_thread(pt_t* pt) )
 		acc += TKF.fr.argv[5] << 0;
 		TKF.acc_z = acc * 16. / (1 << 15);
 
-		if ( OK == TKF_compute() ) {
+		if ( OK == TKF_compute() && ! TKF.take_off_resp_rxed ) {
 			// send the take-off frame
 			PT_WAIT_UNTIL(pt, frame_set_0(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_TAKE_OFF, 0)
 					&& DPT_tx(&TKF.interf, &fr));
@@ -299,7 +307,7 @@ void TKF_init(void)
 	FIFO_init(&TKF.in_fifo, &TKF.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
 
 	TKF.interf.channel = 8;
-	TKF.interf.cmde_mask = _CM(FR_TAKE_OFF_THRES) | _CM(FR_DATA_ACC) | _CM(FR_DATA_GYR);
+	TKF.interf.cmde_mask = _CM(FR_TAKE_OFF) | _CM(FR_TAKE_OFF_THRES) | _CM(FR_DATA_ACC) | _CM(FR_DATA_GYR);
 	TKF.interf.queue = &TKF.in_fifo;
 	DPT_register(&TKF.interf);
 
@@ -307,6 +315,8 @@ void TKF_init(void)
 	TKF.thr_time_out = TIME_MAX;
 	TKF.thr_duration = 255;	// 25.5s
 	TKF.acc_thr = 20;	// 2.0G
+
+	TKF.take_off_resp_rxed = 0;
 
 	// quaternion init
 	TKF.beta = 0.1f;
