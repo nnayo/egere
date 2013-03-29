@@ -72,42 +72,40 @@ env.AlwaysBuild('size')
 
 
 # load binary in flash
-load = env.Alias('load', project_name + '.hex', 'avrdude -V -c arduino -p ATMEGA328P -P /dev/ttyACM0 -b 57600 -U flash:w:' + project_name + '.hex')
+env.Depends(project_name + '.flash.hex', project_name + '.elf')
+env.Command(project_name + '.flash.hex', project_name + '.elf', 'avr-objcopy -j .text -j .data -O ihex ' + project_name + '.elf' + ' ' + project_name + '.flash.hex')
+load = env.Alias('load', project_name + '.flash.hex', 'avrdude -V -c arduino -p ATMEGA328P -P /dev/ttyACM0 -b 57600 -U flash:w:' + project_name + '.flash.hex')
 env.AlwaysBuild(load)
 
 
 # download the frames in eeprom
-env.Depends('minut_eeprom_frames.hex', 'avr-objcopy')
-env.Command('minut_eeprom_frames.hex', '', 'avr-objcopy --only-section .eeprom ' + project_name + '.hex' + 'minut_eeprom_frames.hex')
-env.Alias('eeprom', 'minut_eeprom_frames.hex', 'avrdude -V -c arduino -p ATMEGA328P -D -P /dev/ttyACM0 -b 57600 -U eeprom:w:minut_eeprom_frames.hex:i')
+env.Depends(project_name + '.eeprom.hex', project_name + '.elf')
+env.Command(project_name + '.eeprom.hex', project_name + '.elf', 'avr-objcopy -j .eeprom --change-section-lma .eeprom=0 -O ihex ' + project_name + '.elf' + ' ' + project_name + '.eeprom.hex')
+
+env.Alias('eeprom', project_name + '.eeprom.hex', 'avrdude -V -c arduino -p ATMEGA328P -D -P /dev/ttyACM0 -b 57600 -U eeprom:w:' + project_name + '.eeprom.hex')
 env.AlwaysBuild('eeprom')
 
+env.Alias('eeprom_check', '', 'avrdude -V -c arduino -p ATMEGA328P -D -P /dev/ttyACM0 -b 57600 -U eeprom:r:eeprom_content.raw:h')
+env.AlwaysBuild('eeprom_check')
 
 # connect to target with a terminal
-env.Alias('term', '', 'avrdude -P usb -p ' + mcu_target + ' -c dragon_jtag -t')
+env.Alias('term', '', 'avrdude -V -c arduino -p ATMEGA328P -D -P /dev/ttyACM0 -b 57600 -t')
 env.AlwaysBuild('term')
 
 
 # test with simavr
-run = env.Alias('run', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf > log')
-env.AlwaysBuild(run)
-
+env.Alias('sim', project_name + '.elf', 'time ~/TRoll/projects/simavr/simavr/run_avr -t -v -s ~/TRoll/projects/simavr/examples/sim/mpu6050.so ~/TRoll/projects/égère/soft/minut.elf > log')
+env.AlwaysBuild('sim')
 
 # extract frames from gtkwave_trace.vcd file
-env.Alias('log', 'gtkwave_trace.vcd', '~/TRoll/projects/interface_server/streamer.py localhost:7777 gtkwave_trace.vcd UDR0& ~/TRoll/projects/interface_server/onflight_decode.py localhost:7777 > decoded.log')
+env.Alias('log', 'gtkwave_trace.vcd', '~/TRoll/projects/interface_server/streamer.py localhost:7777 gtkwave_trace.vcd UDR0& sleep 1; ~/TRoll/projects/interface_server/onflight_decode.py localhost:7777 > decoded.log')
 env.AlwaysBuild('log')
 
 
 # test with simavr & avr-gdb
-# a dedicated version of simavr with MPU-6050 'simulation' is at:
-# ~/TRoll/projects/simavr/examples/board_i2c_mpu6050
-# launch it with:
-# ./obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/minut.elf g
+env.Alias('debug', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -g -t -v -s ~/TRoll/projects/simavr/examples/sim/mpu6050.so ' + project_name + '.elf')
+env.AlwaysBuild('debug')
 
-env.Alias('sim', project_name + '.elf', '~/TRoll/projects/simavr/simavr/run_avr -g -t -v -m ' + mcu_target + ' -f 16000000  ' + project_name + '.elf')
-env.AlwaysBuild('sim')
-env.Alias('sim2', project_name + '.elf', '~/TRoll/projects/simavr/examples/board_i2c_mpu6050/obj-x86_64-linux-gnu/i2ctest.elf ~/TRoll/projects/égère/soft/minut.elf > log')
-env.AlwaysBuild('sim2')
 env.Alias('gdb', project_name + '.elf', 'avr-gdb ' + project_name + '.elf -n -x gdbinit_avr')
 env.AlwaysBuild('gdb')
 
