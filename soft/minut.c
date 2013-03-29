@@ -25,7 +25,7 @@
 #define NB_OUT_FR	4
 
 #define CONE_DDR			DDRB
-#define CONE				PORTB
+#define CONE				PINB
 #define CONE_PIN			PB3
 #define CONE_STATE_CLOSED	0
 #define CONE_STATE_OPEN		_BV(CONE_PIN)
@@ -276,6 +276,11 @@ static u8 init_action(pt_t* pt, void* args)
 
 	PT_BEGIN(pt);
 
+	// signal init state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_INIT)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
 	// cmde cone stop
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
@@ -287,7 +292,7 @@ static u8 init_action(pt_t* pt, void* args)
 	);
 
 	// led alive 0.25s
-	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 25)
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, FR_LED_ALIVE, FR_LED_SET, 25)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -302,6 +307,11 @@ static u8 cone_opening_action(pt_t* pt, void* args)
 	frame_t fr;
 
 	PT_BEGIN(pt);
+
+	// signal cone opening state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_CONE_OPENING)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
 
 	// cmde cone open
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OPEN)
@@ -323,6 +333,11 @@ static u8 aero_opening_action(pt_t* pt, void* args)
 
 	PT_BEGIN(pt);
 
+	// signal aero opening state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_AERO_OPENING)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
 	// cmde aero open
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OPEN)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
@@ -337,7 +352,12 @@ static u8 aero_opening_action(pt_t* pt, void* args)
 	MNT.time_out = TIME_get() + 5 * TIME_1_SEC;
 
 	// led alive 0.5s
-	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 50)
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, FR_LED_ALIVE, FR_LED_SET, 50)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
+	// led open 0.5s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, FR_LED_OPEN, FR_LED_SET, 50)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -353,6 +373,11 @@ static u8 aero_open_action(pt_t* pt, void* args)
 
 	PT_BEGIN(pt);
 
+	// signal aero open state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_AERO_OPEN)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
 	// cmde aero stop
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
@@ -366,7 +391,14 @@ static u8 aero_open_action(pt_t* pt, void* args)
 
 static u8 cone_closing_action(pt_t* pt, void* args)
 {
+	frame_t fr;
+
 	PT_BEGIN(pt);
+
+	// signal cone closing state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_CONE_CLOSING)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
 
 	// time-out 5s
 	MNT.time_out = TIME_get() + 5 * TIME_1_SEC;
@@ -383,6 +415,11 @@ static u8 cone_closed_action(pt_t* pt, void* args)
 
 	PT_BEGIN(pt);
 
+	// signal cone closed state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_CONE_CLOSED)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
 	// cmde cone close
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_CLOSE)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
@@ -392,7 +429,12 @@ static u8 cone_closed_action(pt_t* pt, void* args)
 	MNT.time_out = TIME_get() + 1 * TIME_1_SEC;
 
 	// led alive 0.1s
-	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 10)
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, FR_LED_ALIVE, FR_LED_SET, 10)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
+	// led open off 0.0s
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, FR_LED_OPEN, FR_LED_SET, 0)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -408,13 +450,18 @@ static u8 waiting_action(pt_t* pt, void* args)
 
 	PT_BEGIN(pt);
 
+	// signal waiting state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_WAITING)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
 	// cmde cone stop
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
 	// led alive 1s
-	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 100)
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, FR_LED_ALIVE, FR_LED_SET, 100)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -430,6 +477,11 @@ static u8 flight_action(pt_t* pt, void* args)
 
 	PT_BEGIN(pt);
 
+	// signal flight state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_FLIGHT)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
 	// cmde cone close
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_CLOSE)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
@@ -444,7 +496,7 @@ static u8 flight_action(pt_t* pt, void* args)
 	MNT.time_out = MNT.open_time * TIME_1_SEC / 10 + TIME_get();
 
 	// led alive 0.1s
-	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0xa1, 0x00, 10)
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, FR_LED_ALIVE, FR_LED_SET, 10)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -460,6 +512,11 @@ static u8 cone_open_action(pt_t* pt, void* args)
 
 	PT_BEGIN(pt);
 
+	// signal cone open state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_CONE_OPEN)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
 	// cmde cone open
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OPEN)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
@@ -471,7 +528,7 @@ static u8 cone_open_action(pt_t* pt, void* args)
 	);
 
 	// led open 0.1s
-	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0x09, 0x00, 10)
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, FR_LED_OPEN, FR_LED_SET, 10)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -489,6 +546,11 @@ static u8 braking_action(pt_t* pt, void* args)
 	frame_t fr;
 
 	PT_BEGIN(pt);
+
+	// signal braking state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_BRAKING)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
 
 	// cmde cone stop
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
@@ -515,6 +577,11 @@ static u8 parachute_action(pt_t* pt, void* args)
 
 	PT_BEGIN(pt);
 
+	// signal parachute state
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_PARACHUTE)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
 	// cmde cone stop
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
@@ -526,7 +593,7 @@ static u8 parachute_action(pt_t* pt, void* args)
 	);
 
 	// led open 1s
-	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, 0x09, 0x00, 100)
+	PT_WAIT_UNTIL(pt, frame_set_3(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_LED_CMD, 0, FR_LED_OPEN, FR_LED_SET, 100)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
