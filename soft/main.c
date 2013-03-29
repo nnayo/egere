@@ -146,6 +146,8 @@ const struct avr_mmcu_vcd_trace_t simavr_conf[]  _MMCU_ = {
 	{ AVR_MCU_VCD_SYMBOL("UDR0"), .what = (void*)&UDR0, },
 	{ AVR_MCU_VCD_SYMBOL("UDRIE0"), .mask = _BV(UDRIE0), .what = (void*)&UCSR0B, },
 	{ AVR_MCU_VCD_SYMBOL("UCSR0A"), .what = (void*)&UCSR0A, },
+
+	{ AVR_MCU_VCD_SYMBOL("PINB"), .what = (void*)&PINB, },
 };
 
 
@@ -248,11 +250,14 @@ int main(void)
 		MPU_run();
 		TKF_run();
 
-		if ( TIME_get() > 15 * TIME_1_SEC ) {
+//#define DEBUG
+#if DEBUG
+		if ( TIME_get() > 20 * TIME_1_SEC ) {
 			cli();
 #include <avr/sleep.h>
 			sleep_mode();
 		}
+#endif
 	}
 
 	// this point is never reached
