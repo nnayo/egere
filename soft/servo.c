@@ -352,7 +352,7 @@ void SRV_init(void)
 	FIFO_init(&SRV.in, &SRV.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
 	FIFO_init(&SRV.out, &SRV.out_buf, OUT_FIFO_SIZE, sizeof(frame_t));
 
-	SRV.interf.channel = 9;
+	SRV.interf.channel = 10;
 	SRV.interf.cmde_mask = _CM(FR_MINUT_SERVO_CMD) | _CM(FR_MINUT_SERVO_INFO);
 	SRV.interf.queue = &SRV.in;
 	DPT_register(&SRV.interf);

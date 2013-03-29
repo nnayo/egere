@@ -201,7 +201,7 @@ static u8 TKF_compute(void)
 }
 
 
-	static s32 acc;
+volatile	static s32 acc;
 static PT_THREAD( TKF_thread(pt_t* pt) )
 {
 	frame_t fr;
@@ -214,6 +214,10 @@ static PT_THREAD( TKF_thread(pt_t* pt) )
 
 	// responses are ignored
 	if ( TKF.fr.resp ) {
+		// but don't forget to release the dispatcher
+		DPT_unlock(&TKF.interf);
+
+		// and restart the waiting
 		PT_RESTART(pt);
 	}
 
@@ -223,21 +227,22 @@ static PT_THREAD( TKF_thread(pt_t* pt) )
 		TKF_config();
 
 		// send the response
-		DPT_lock(&TKF.interf);
 		u8 swap = TKF.fr.dest;
 		TKF.fr.dest = TKF.fr.orig;
 		TKF.fr.orig = swap;
 		TKF.fr.resp = 1;
 		PT_WAIT_UNTIL(pt, DPT_tx(&TKF.interf, &TKF.fr));
-		DPT_unlock(&TKF.interf);
 
 		break;
 
 	// acceleration data
 	case FR_DATA_ACC:
-		acc = TKF.fr.argv[0] << 8;
-		acc |= TKF.fr.argv[1]; acc <<= 0;
-		acc *= 16;	acc /= 1 << 15;
+		acc = TKF.fr.argv[0];
+		acc <<= 8;
+		acc |= TKF.fr.argv[1];
+		acc <<= 0;
+		acc *= 16;
+		acc /= 0x8000;
 		TKF.acc_x = acc;
 
 		acc = TKF.fr.argv[2] << 8;
@@ -250,10 +255,8 @@ static PT_THREAD( TKF_thread(pt_t* pt) )
 
 		if ( OK == TKF_compute() ) {
 			// send the take-off frame
-			DPT_lock(&TKF.interf);
 			PT_WAIT_UNTIL(pt, frame_set_0(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_TAKE_OFF, 0)
 					&& DPT_tx(&TKF.interf, &fr));
-			DPT_unlock(&TKF.interf);
 		}
 
 		break;
@@ -279,6 +282,7 @@ static PT_THREAD( TKF_thread(pt_t* pt) )
 		break;
 	}
 
+	DPT_unlock(&TKF.interf);
 	PT_RESTART(pt);
 
 	PT_END(pt);
@@ -294,7 +298,7 @@ void TKF_init(void)
 	// init
 	FIFO_init(&TKF.in_fifo, &TKF.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
 
-	TKF.interf.channel = 10;
+	TKF.interf.channel = 8;
 	TKF.interf.cmde_mask = _CM(FR_TAKE_OFF_THRES) | _CM(FR_DATA_ACC) | _CM(FR_DATA_GYR);
 	TKF.interf.queue = &TKF.in_fifo;
 	DPT_register(&TKF.interf);

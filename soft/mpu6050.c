@@ -207,7 +207,7 @@ static PT_THREAD( MPU_thread(pt_t* pt) )
 		// data acquisition every 10 ms (100 Hz)
 		PT_WAIT_UNTIL(pt, TIME_get() >= MPU.time_out);
 
-		MPU.time_out += 10 * TIME_1_MSEC;
+		MPU.time_out += 100 * TIME_1_MSEC;
 
 		DPT_lock(&MPU.interf);
 
@@ -268,7 +268,7 @@ void MPU_init(void)
 	// init
 	FIFO_init(&MPU.in_fifo, &MPU.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
 
-	MPU.interf.channel = 8;
+	MPU.interf.channel = 9;
 	//MPU.interf.cmde_mask = _CM(FR_I2C_READ) | _CM(FR_I2C_WRITE);
 	MPU.interf.cmde_mask = _CM(FR_I2C_READ) | _CM(FR_I2C_WRITE) | _CM(FR_APPLI_START);
 	MPU.interf.queue = &MPU.in_fifo;
