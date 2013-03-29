@@ -635,6 +635,7 @@ static PT_THREAD( MNT_check_commands(pt_t* pt) )
 
 	// silently ignore incoming response
 	if ( MNT.cmd_fr.resp == 1 ) {
+		DPT_unlock(&MNT.interf);
 		PT_RESTART(pt);
 	}
 
@@ -774,7 +775,7 @@ void MNT_run(void)
 
 		// if there is an event
 		if ( OK == FIFO_get(&MNT.ev_fifo, &ev) ) {
-			// update the state machine
+			// send it to the state machine
 			STM_event(&MNT.stm, ev);
 		}
 
