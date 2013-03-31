@@ -3,6 +3,9 @@
 
 project_name = 'minut'
 
+import os
+troll_path = os.environ['TROLL_PROJECTS']
+
 
 minut	= [
 	'main.c',			\
@@ -13,18 +16,16 @@ minut	= [
 	'eeprom_frames.c',	\
 ]
 
-import os
-
 libs = ['scalp', 'nanoK']
-libpath = [os.environ['TROLL_PROJECTS'] + '/scalp', os.environ['TROLL_PROJECTS'] + '/nanoK']
+libpath = [troll_path + '/scalp', troll_path + '/nanoK']
 
 mcu_target      = 'atmega328p'
 optimize        = '-Os -mcall-prologues -fshort-enums -std=c99 '
 #optimize        = '-Os -mcall-prologues -fshort-enums '
 includes	= [
 				'.',
-				os.environ['TROLL_PROJECTS'] + '/nanoK',
-				os.environ['TROLL_PROJECTS'] + '/scalp',
+				troll_path + '/nanoK',
+				troll_path + '/scalp',
 				'/home/yog/TRoll/projects/simavr/simavr/sim/avr',
 			]
 cflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target
@@ -52,13 +53,13 @@ env.Hex(project_name, project_name)
 
 Export('env')
 
-SConscript([os.environ['TROLL_PROJECTS'] + '/scalp/SConscript', os.environ['TROLL_PROJECTS'] + '/nanoK/SConscript'], exports='env')
+SConscript([troll_path + '/scalp/SConscript', troll_path + '/nanoK/SConscript'], exports='env')
 
 elf = env.Program(project_name + '.elf', minut, LIBS = libs, LIBPATH = libpath)
 env.Default(elf)
 
 # autogen eeprom_frame.c file
-env.Depends('eeprom_frames.c', './gen_eeprom_frames.py')
+env.Depends('eeprom_frames.c', ['./gen_eeprom_frames.py', 'frame.py', 'minut.py'])
 env.Command('eeprom_frames.c', '', './gen_eeprom_frames.py eeprom_frames.c')
 
 # generate a file with code and source
@@ -94,11 +95,11 @@ env.AlwaysBuild('term')
 
 
 # test with simavr
-env.Alias('sim', project_name + '.elf', 'time ~/TRoll/projects/simavr/simavr/run_avr -t -v -s ~/TRoll/projects/simavr/examples/sim/mpu6050.so ~/TRoll/projects/égère/soft/minut.elf > log')
+env.Alias('sim', project_name + '.elf', 'time ' + troll_path + '/simavr/simavr/run_avr -t -v -s ' + troll_path + '/simavr/examples/sim/mpu6050.so ' + troll_path + '/égère/soft/minut.elf > log')
 env.AlwaysBuild('sim')
 
 # extract frames from gtkwave_trace.vcd file
-env.Alias('log', 'gtkwave_trace.vcd', '~/TRoll/projects/interface_server/streamer.py localhost:7777 gtkwave_trace.vcd UDR0& sleep 1; ~/TRoll/projects/interface_server/onflight_decode.py localhost:7777 > decoded.log')
+env.Alias('log', 'gtkwave_trace.vcd', troll_path + '/interface_server/streamer.py localhost:7777 gtkwave_trace.vcd UDR0& sleep 1; ' + troll_path + '/interface_server/onflight_decode.py localhost:7777 > decoded.log')
 env.AlwaysBuild('log')
 
 
