@@ -365,7 +365,9 @@ void SRV_init(void)
 	SERVO_DDR |= SERVO_AERO;
 
 	// init the driver, by default, the pwm is zero
-	TMR1_init(TMR1_WITHOUT_INTERRUPT, TMR1_PRESCALER_8, TMR1_WGM_FAST_PWM_OCR1A, COM1AB_1010, NULL, NULL);
+	TMR1_init(TMR1_WITHOUT_INTERRUPT, TMR1_PRESCALER_8, TMR1_WGM_FAST_PWM_ICR1, COM1AB_1010, NULL, NULL);
+
+	TMR1_compare_set(TMR1_CAPT, 40000);
 
 	// launch the pwm generation
 	TMR1_start();
