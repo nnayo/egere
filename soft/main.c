@@ -137,6 +137,8 @@ const struct avr_mmcu_vcd_trace_t simavr_conf[]  _MMCU_ = {
 	{ AVR_MCU_VCD_SYMBOL("OCR1AL"), .what = (void*)&OCR1AL, },
 	{ AVR_MCU_VCD_SYMBOL("OCR1BH"), .what = (void*)&OCR1BH, },
 	{ AVR_MCU_VCD_SYMBOL("OCR1BL"), .what = (void*)&OCR1BL, },
+	{ AVR_MCU_VCD_SYMBOL("ICR1H"), .what = (void*)&ICR1H, },
+	{ AVR_MCU_VCD_SYMBOL("ICR1L"), .what = (void*)&ICR1L, },
 
 	{ AVR_MCU_VCD_SYMBOL("TIMSK1"), .what = (void*)&TIMSK1, },
 	{ AVR_MCU_VCD_SYMBOL("TIFR1"), .what = (void*)&TIFR1, },
@@ -148,6 +150,8 @@ const struct avr_mmcu_vcd_trace_t simavr_conf[]  _MMCU_ = {
 	{ AVR_MCU_VCD_SYMBOL("UCSR0A"), .what = (void*)&UCSR0A, },
 
 	{ AVR_MCU_VCD_SYMBOL("PINB"), .what = (void*)&PINB, },
+	{ AVR_MCU_VCD_SYMBOL("PORTB"), .what = (void*)&PORTB, },
+	{ AVR_MCU_VCD_SYMBOL("DDRB"), .what = (void*)&DDRB, },
 };
 
 
