@@ -25,19 +25,19 @@
 arduino	atmega	function
 -------+-------+--------
 
-D9	PB1	servo cone
-D10	PB2	servo aero
+D8      PB0     SS/
+mosi    PB3     mosi
+miso    PB4     miso
+sck     PB5     sck
 
-D13	PB5	led alive
-D12	PB4	led open
-D11	PB3	cone open switch
+D9      PB1     servo cone
+D10     PB2     servo aero
 
-A4	PC4	sda
-A5	PC5	scl
+A4      PC4     sda
+A5      PC5     scl
 
-+9V	PWR	power in
-+5V	+5V	power out
-GND	GND	ground
++9V     PWR     power in
+GND     GND     ground
 
 
 MPU-6050	function
@@ -127,6 +127,8 @@ const struct avr_mmcu_vcd_trace_t simavr_conf[]  _MMCU_ = {
 	{ AVR_MCU_VCD_SYMBOL("cone_open_switch"), .mask = _BV(PORTB3), .what = (void*)&PINB, },
 
 	{ AVR_MCU_VCD_SYMBOL("TWDR"), .what = (void*)&TWDR, },
+
+	{ AVR_MCU_VCD_SYMBOL("SPDR"), .what = (void*)&SPDR, },
 
 	{ AVR_MCU_VCD_SYMBOL("TCCR1A"), .what = (void*)&TCCR1A, },
 	{ AVR_MCU_VCD_SYMBOL("TCCR1B"), .what = (void*)&TCCR1B, },
@@ -220,6 +222,13 @@ int main(void)
 	TIME_init(time_adjust);
 	TIME_set_incr(10 * TIME_1_MSEC);
 
+	// program and start timer2 for interrupt on compare every 10 ms
+	TMR2_init(TMR2_WITH_COMPARE_INT, TMR2_PRESCALER_1024, TMR2_WGM_CTC, TIMER2_TOP_VALUE, time, NULL);
+	TMR2_start();
+
+	// enable interrupts
+	sei();
+
 	// init every common module
 	DPT_init();
 	BSC_init();
@@ -228,17 +237,10 @@ int main(void)
 //	LOG_init();
 	CPU_init();
 
-	// program and start timer2 for interrupt on compare every 10 ms
-	TMR2_init(TMR2_WITH_COMPARE_INT, TMR2_PRESCALER_1024, TMR2_WGM_CTC, TIMER2_TOP_VALUE, time, NULL);
-	TMR2_start();
-
 	MNT_init();
 	SRV_init();
 	MPU_init();
 	TKF_init();
-
-	// enable interrupts
-	sei();
 
 	while (1) {
 		// run every common module
