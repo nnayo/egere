@@ -12,6 +12,7 @@ minut	= [
 	'minut.c',			\
 	'servo.c',			\
 	'mpu6050.c',		\
+	'sc18is600.c',		\
 	'tk-off.c',			\
 	'eeprom_frames.c',	\
 ]
@@ -26,9 +27,9 @@ includes	= [
 				'.',
 				troll_path + '/nanoK',
 				troll_path + '/scalp',
-				'/home/yog/TRoll/projects/simavr/simavr/sim/avr',
+                troll_path + '/simavr/simavr/sim/avr',
 			]
-cflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target
+cflags		= '-g -Wall -Wextra ' + optimize + '-mmcu=' + mcu_target
 ldflags		= '-g -Wall ' + optimize + '-mmcu=' + mcu_target + ' -Wl,-Map,' + project_name + '.map,--cref '
 ldflags		+= '-Wl,--undefined=_mmcu,--section-start=.mmcu=0x8000'
 
@@ -63,8 +64,8 @@ env.Depends('eeprom_frames.c', ['./gen_eeprom_frames.py', 'frame.py', 'minut.py'
 env.Command('eeprom_frames.c', '', './gen_eeprom_frames.py eeprom_frames.c')
 
 # generate a file with code and source
-env.Alias('lis', project_name + '.elf', 'avr-objdump -h -SxD ' + project_name + '.elf > ' + project_name + '.lis')
-env.AlwaysBuild('lis')
+env.Alias('lix', project_name + '.elf', 'avr-objdump -h -sdx ' + project_name + '.elf > ' + project_name + '.lix')
+env.AlwaysBuild('lix')
 
 
 # give the size of the binary
