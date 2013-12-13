@@ -1,94 +1,108 @@
 import FreeCAD
 from FreeCAD import Vector
-import Part
 
-import rocket_data as rd
-import tube
-import propulsor
+import meca
 import elec
 
 
-def prop_draw(doc):
-    # create and position
+def elec_draw(doc, tube):
+    offset_elec = tube['len'] + 5
 
-    # propulsor
-    propu = propulsor.propulsor()
-    propu.translate(Vector(0, 0, rd.tube['len'] / 2))
-    doc.addObject("Part::Feature", "propu").Shape = propu
+    swit = elec.Switch(doc)
+    swit.translate(Vector(-swit['x'] / 2 + tube['int diameter'] / 2 - 1, 0, offset_elec - swit['z'] / 2))
 
-    # guide
-    guid = propulsor.guide()
-    guid.translate(Vector(0, 0, rd.tube['len'] / 2))
-    doc.addObject("Part::Feature", "guide").Shape = guid
+    servo_cone = elec.Servo(doc, 'servo_cone')
+    servo_cone.translate(Vector(0, 0, offset_elec + servo_cone['z'] / 2))
 
+    offset_elec += servo_cone['z'] + 5
 
-def elec_draw(doc):
-    offset_elec = rd.tube['len'] + 5
+    pile = elec.Pile9V(doc)
+    pile.translate(Vector(0, 0, offset_elec + pile['z'] / 2))
 
-    # minut
-    comp = elec.pile_9v()
-    #comp.rotate(Vector(0, 0, 0), Vector(0, 0, 1), 60)
-    comp.translate(Vector(0, 0, offset_elec + elec.pile_9v_data['z'] / 2))
-    doc.addObject("Part::Feature", 'pile_9v').Shape = comp
+    arduino = elec.Arduino(doc)
+    arduino.translate(Vector(0, arduino['y'] / 2 + 2 + pile['y'] / 2, offset_elec + arduino['z'] / 2))
 
-    comp = elec.arduino()
-    #comp.rotate(Vector(0, 0, 0), Vector(0, 0, 1), 60)
-    comp.translate(Vector(0, elec.arduino_data['y'] / 2 + 2 + elec.pile_9v_data['y'] / 2, offset_elec + elec.arduino_data['z'] / 2))
-    doc.addObject("Part::Feature", 'minuterie').Shape = comp
+    mpu = elec.Mpu(doc)
+    mpu.translate(Vector(0, arduino['y'] / 2 + 2 + pile['y'] / 2, offset_elec + arduino['z'] + mpu['z'] / 2 + 2))
 
-    comp = elec.mpu()
-    comp.translate(Vector(0, elec.arduino_data['y'] / 2 + 2 + elec.pile_9v_data['y'] / 2, offset_elec + elec.arduino_data['z'] + elec.mpu_data['z'] / 2 + 2))
-    #comp.rotate(Vector(0, 0, 0), Vector(0, 0, 1), 60)
-    doc.addObject("Part::Feature", 'mpu').Shape = comp
+    connect = elec.ConnectCard(doc)
+    connect.rotate(Vector(0, 0, 1), 180)
+    connect.translate(Vector(0, -connect['y'] / 2 - 2 - pile['y'] / 2, offset_elec + connect['z'] / 2))
 
-    comp = elec.connect_card()
-    #comp.rotate(Vector(0, 0, 0), Vector(0, 0, 1), 60)
-    comp.translate(Vector(0, -elec.connect_card_data['y'] / 2 - 2 - elec.pile_9v_data['y'] / 2, offset_elec + elec.connect_card_data['z'] / 2))
-    doc.addObject("Part::Feature", 'connection').Shape = comp
-
-    comp = elec.servo()
-    comp.translate(Vector(0, 0, rd.tube['len'] - elec.servo_data['z'] / 2))
-    #comp.rotate(Vector(0, 0, 0), Vector(0, 0, 1), 60)
-    doc.addObject("Part::Feature", 'servo_cone').Shape = comp
-
-    comp = elec.switch()
-    comp.translate(Vector(-elec.switch_data['x'] / 2 + rd.tube['int diameter'] / 2, 0, rd.tube['len'] - elec.servo_data['z'] - elec.switch_data['z'] / 2))
-    #comp.rotate(Vector(0, 0, 0), Vector(0, 0, 1), 60)
-    doc.addObject("Part::Feature", 'switch_cone').Shape = comp
-
-    obj = Part.makeCylinder(200, 1)
-    obj.translate(Vector(0, 0, rd.tube['len']))
-    doc.addObject("Part::Feature", 'bottom_minut_zone').Shape = obj
+    #obj = Part.makeCylinder(200, 1)
+    #obj.translate(Vector(0, 0, rd.tube['len']))
+    #doc.addObject("Part::Feature", 'bottom_minut_zone').Shape = obj
     #FreeCAD.Gui.ActiveDocument.getObject("bottom_minut_zone").Visibility = False
 
-    comp = elec.servo()
-    comp.translate(Vector(0, 0, rd.tube['len'] / 2 + elec.servo_data['z']))
-    #comp.rotate(Vector(0, 0, 0), Vector(0, 0, 1), 60)
-    doc.addObject("Part::Feature", 'servo_aero').Shape = comp
+    servo_aero = elec.Servo(doc, 'servo_aero')
+    servo_aero.translate(Vector(0, 0, tube['len'] / 2 + servo_aero['z']))
 
+    return (swit, servo_cone, pile, arduino, mpu, connect)
 
 def tube_draw(doc):
     """draw the tube"""
     # tube
-    comp = tube.tube()
-    doc.addObject("Part::Feature", 'tube').Shape = comp
-    FreeCAD.Gui.ActiveDocument.getObject("tube").Visibility = False
+    tube = meca.Tube(doc)
 
+    # cone
+    cone = meca.Cone(doc)
+    cone.translate(Vector(0, 0, tube['len']))
 
+    # propulsor
+    propu = meca.Propulsor(doc)
+    propu.translate(Vector(0, 0, tube['len'] / 2))
+
+    # isolator
+    isol = meca.Isolator(doc, propu)
+    isol.translate(Vector(0, 0, tube['len'] / 2))
+
+    # propulsor bague
+    bague = meca.BaguePropu(doc, tube, isol)
+    bague.translate(Vector(0, 0, tube['len'] / 2))
+
+    # aero-brakes
+    aero = []
+    aero.append(meca.AeroBrake(doc, tube, 'aero_brake0'))
+    aero.append(meca.AeroBrake(doc, tube, 'aero_brake1'))
+    aero.append(meca.AeroBrake(doc, tube, 'aero_brake2'))
+
+    aero[0].rotate(Vector(0, 0, 1), 0)
+    aero[1].rotate(Vector(0, 0, 1), 120)
+    aero[2].rotate(Vector(0, 0, 1), 240)
+
+    aero[0].translate(Vector(0, 0, tube['len'] / 2 + bague['len'] + 5))
+    aero[1].translate(Vector(0, 0, tube['len'] / 2 + bague['len'] + 5))
+    aero[2].translate(Vector(0, 0, tube['len'] / 2 + bague['len'] + 5))
+    
+    return tube
+
+def integ_draw(doc, tube, elec_comps):
+    # integration bague
+    bague = meca.Bague(doc)
+    bague.translate(Vector(0, 0, tube['len'] - bague['len lo'] - bague['len hi']))
+
+    # integration
+    integ1 = meca.Integ1(doc)
+    integ1.translate(Vector(0, 0, tube['len'] - bague['len hi']))
+    integ2 = meca.Integ2(doc)
+    integ2.translate(Vector(0, 0, tube['len'] - bague['len hi']))
+
+    for ec in elec_comps:
+        integ1.cut(ec.envelop().Shape)
+        integ2.cut(ec.envelop().Shape)
 
 def main(doc):
-    tube_draw(doc)
-    prop_draw(doc)
-    elec_draw(doc)
-    #aero_draw(doc)
-    #cone_draw(doc)
+    tube = tube_draw(doc)
+    elec_comps = elec_draw(doc, tube)
+    integ_draw(doc, tube, elec_comps)
 
+    FreeCAD.Gui.activeDocument().activeView().viewAxometric()
     FreeCAD.Gui.SendMsgToActiveView("ViewFit")
 
 
 if __name__ == "__main__":
     doc = FreeCAD.activeDocument()
     if doc == None:
-        doc = FreeCAD.newDocument()
+        doc = FreeCAD.newDocument('egere')
 
     main(doc)
