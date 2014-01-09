@@ -48,6 +48,9 @@ def tube_draw(doc):
     cone = meca.Cone(doc)
     cone.translate(Vector(0, 0, tube['len']))
 
+    helix = meca.Helix(doc)
+    helix.translate(Vector(0, 0, tube['len']))
+
     # propulsor
     propu = meca.Propulsor(doc)
     propu.translate(Vector(0, 0, tube['len'] / 2))
@@ -74,9 +77,9 @@ def tube_draw(doc):
     aero[1].translate(Vector(0, 0, tube['len'] / 2 + bague['len'] + 5))
     aero[2].translate(Vector(0, 0, tube['len'] / 2 + bague['len'] + 5))
     
-    return tube
+    return tube, cone
 
-def integ_draw(doc, tube, elec_comps):
+def integ_draw(doc, tube, cone, elec_comps):
     # integration bague
     bague = meca.Bague(doc)
     bague.translate(Vector(0, 0, tube['len'] - bague['len lo'] - bague['len hi']))
@@ -91,10 +94,12 @@ def integ_draw(doc, tube, elec_comps):
         integ1.cut(ec.envelop().Shape)
         integ2.cut(ec.envelop().Shape)
 
+    integ1.cut(cone.envelop().Shape)
+
 def main(doc):
-    tube = tube_draw(doc)
+    tube, cone = tube_draw(doc)
     elec_comps = elec_draw(doc, tube)
-    integ_draw(doc, tube, elec_comps)
+    integ_draw(doc, tube, cone, elec_comps)
 
     FreeCAD.Gui.activeDocument().activeView().viewAxometric()
     FreeCAD.Gui.SendMsgToActiveView("ViewFit")

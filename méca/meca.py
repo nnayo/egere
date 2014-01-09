@@ -58,6 +58,9 @@ class MecaComponent:
         """overload the cut method"""
         self.comp.Shape = self.comp.Shape.cut(shape)
 
+    def envelop(self):
+        return self.comp
+
 
 class Tube(MecaComponent):
     """tube"""
@@ -85,7 +88,7 @@ class Cone(MecaComponent):
     def __init__(self, doc, name='cone'):
         self.data = {
             'len lo': 70., # mm
-            'len up': 100., # mm
+            'len up': 120., # mm
             'int diameter': 36., # mm
             'thick': 1., # mm
         }
@@ -110,15 +113,72 @@ class Cone(MecaComponent):
         cone_up.translate(Vector(0, 0, len_lo))
         cone_up = cone_up.fuse(cone_up)
 
+        # blocking thread (pas de vis de blocage)
+#        radius = self.data['int diameter'] / 2
+#
+#        helix = Part.makeHelix(4., 20., radius)
+#
+#        p0 = (radius, 0, 0)
+#        p1 = (radius, 0, 3)
+#        p2 = (radius - 1, 0, 2)
+#        p3 = (radius - 1, 0, 1)
+#
+#        e0 = Part.makeLine(p0, p1)
+#        e1 = Part.makeLine(p1, p2)
+#        e2 = Part.makeLine(p2, p3)
+#        e3 = Part.makeLine(p3, p0)
+#        section = Part.Wire([e0, e1, e2, e3])
+#        helix = Part.Wire(helix).makePipeShell([section], 1, 1)
+#        helix.translate(Vector(0, 0, len_lo - 20))
+
         int_tube = Part.makeCylinder(int_diam / 2, len_lo)
         ext_tube = Part.makeCylinder(ext_diam / 2, len_lo)
 
         cone_lo = ext_tube.cut(int_tube)
+#        cone_lo = cone_lo.fuse(helix)
 
         #comp = cone_up.fuse(cone_lo) # BUG: this fusion fails!!!
-        comp = cone_up
+        comp = cone_lo
 
         MecaComponent.__init__(self, doc, comp, name, (1., 1., 0.))
+
+
+class Helix(MecaComponent):
+    """helix"""
+    def __init__(self, doc, name='helix'):
+        self.data = {
+            'len lo': 70., # mm
+            'len up': 120., # mm
+            'int diameter': 36., # mm
+            'thick': 1., # mm
+        }
+
+        len_lo = self.data['len lo']
+
+        # blocking thread (pas de vis de blocage)
+        radius = self.data['int diameter'] / 2
+
+        helix = Part.makeHelix(4., 16., radius)
+
+        p0 = (radius, 0, 0)
+        p1 = (radius, 0, 3)
+        p2 = (radius - 1, 0, 2)
+        p3 = (radius - 1, 0, 1)
+
+        e0 = Part.makeLine(p0, p1)
+        e1 = Part.makeLine(p1, p2)
+        e2 = Part.makeLine(p2, p3)
+        e3 = Part.makeLine(p3, p0)
+        section = Part.Wire([e0, e1, e2, e3])
+        helix = Part.Wire(helix).makePipeShell([section], 1, 1)
+        helix.translate(Vector(0, 0, len_lo - 20))
+
+        helix = helix.fuse(helix)
+
+        comp = helix
+
+        MecaComponent.__init__(self, doc, comp, name, (1., 1., 0.))
+
 
 class Bague(MecaComponent):
     """bague"""
