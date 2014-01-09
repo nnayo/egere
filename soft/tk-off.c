@@ -37,12 +37,14 @@ struct {
 
 	u8 take_off_resp_rxed;		// flag to ensure only 1 take off command is send
 
-	float acc_x;
-	float acc_y;
-	float acc_z;
-	float gyr_x;
-	float gyr_y;
-	float gyr_z;
+	// accelerations are in [-16G; +16G]
+	s16 acc_x;
+	s16 acc_y;
+	s16 acc_z;
+	// rotation speeds are in [-500 deg/s; 500 deg/s]
+	u16 gyr_x;
+	u16 gyr_y;
+	u16 gyr_z;
 
 	// quaternion computation using Madgwick's IMU and AHRS algorithms.
 	float beta;					// 2 * proportional gain (Kp)
@@ -173,7 +175,8 @@ static void TKF_Madgwick(void)
 static void TKF_config(void)
 {
 	TKF.thr_duration = TKF.fr.argv[0];	// threshold duration in 0.1s
-	TKF.acc_thr = TKF.fr.argv[1];		// acceleration threshold in 0.1G
+	TKF.acc_thr = TKF.fr.argv[1];		// acceleration threshold in 0.1G converted to [-16G; +16G]
+	TKF.acc_thr = TKF.acc_thr * 2048 / 10;
 }
 
 
@@ -181,7 +184,7 @@ static void TKF_config(void)
 static u8 TKF_compute(void)
 {
 	// if behond threshold
-	if ( (s16)(10. * TKF.acc_x) < TKF.acc_thr ) {
+	if ( TKF.acc_x < TKF.acc_thr ) {
 		// reset time_out
 		TKF.thr_time_out = TIME_MAX;
 		return KO;
@@ -245,21 +248,14 @@ static PT_THREAD( TKF_thread(pt_t* pt) )
 
 	// acceleration data
 	case FR_DATA_ACC:
-		acc = TKF.fr.argv[0];
-		acc <<= 8;
-		acc |= TKF.fr.argv[1];
-		acc <<= 0;
-		acc *= 16;
-		acc /= 0x8000;
-		TKF.acc_x = acc;
+		TKF.acc_x = TKF.fr.argv[0] << 8;
+		TKF.acc_x |= TKF.fr.argv[1] << 0;
 
-		acc = TKF.fr.argv[2] << 8;
-		acc += TKF.fr.argv[3] << 0;
-		TKF.acc_y = acc * 16 / (1 << 15);
+		TKF.acc_y = TKF.fr.argv[2] << 8;
+		TKF.acc_y |= TKF.fr.argv[3] << 0;
 
-		acc = TKF.fr.argv[4] << 8;
-		acc += TKF.fr.argv[5] << 0;
-		TKF.acc_z = acc * 16. / (1 << 15);
+		TKF.acc_z = TKF.fr.argv[4] << 8;
+		TKF.acc_z |= TKF.fr.argv[5] << 0;
 
 		if ( OK == TKF_compute() && ! TKF.take_off_resp_rxed ) {
 			// send the take-off frame
@@ -271,19 +267,16 @@ static PT_THREAD( TKF_thread(pt_t* pt) )
 
 	// rotation data
 	case FR_DATA_GYR:
-		gyr = TKF.fr.argv[0] << 8;
-		gyr += TKF.fr.argv[1] << 0;
-		TKF.gyr_x = gyr * 200. / (1 << 15);
+		TKF.gyr_x = TKF.fr.argv[0] << 8;
+		TKF.gyr_x |= TKF.fr.argv[1] << 0;
 
-		gyr = TKF.fr.argv[2] << 8;
-		gyr += TKF.fr.argv[3] << 0;
-		TKF.gyr_y = gyr * 200. / (1 << 15);
+		TKF.gyr_y = TKF.fr.argv[2] << 8;
+		TKF.gyr_y |= TKF.fr.argv[3] << 0;
 
-		gyr = TKF.fr.argv[4] << 8;
-		gyr += TKF.fr.argv[5] << 0;
-		TKF.gyr_z = gyr * 200. / (1 << 15);
+		TKF.gyr_z = TKF.fr.argv[4] << 8;
+		TKF.gyr_z |= TKF.fr.argv[5] << 0;
 
-		TKF_Madgwick();
+		//TKF_Madgwick();
 		break;
 
 	default:

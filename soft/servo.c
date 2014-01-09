@@ -69,7 +69,10 @@ static void SRV_cone_on(s8 position)
 	// for position = -90 degrees, signal up time shall be 1 ms so compare = 2000
 	// for position = 0 degrees, signal up time shall be 1.5 ms so compare = 3000
 	// for position = +90 degrees, signal up time shall be 2 ms so compare = 4000
-	TMR1_compare_set(TMR1_A, (position * 1000 / 90) + 3000);
+	// compare = (position / 90) * 1000 + 3000
+	// the computation shall be modified to fit in s16
+	// the result is sure to fit in u16
+	TMR1_compare_set(TMR1_A, ((s16)position * 100 / 9) + 3000);
 }
 
 
@@ -88,7 +91,10 @@ static void SRV_aero_on(s8 position)
 	// for position = -90 degrees, signal up time shall be 1 ms so compare = 2000
 	// for position = 0 degrees, signal up time shall be 1.5 ms so compare = 3000
 	// for position = +90 degrees, signal up time shall be 2 ms so compare = 4000
-	TMR1_compare_set(TMR1_B, (position * 1000 / 90) + 3000);
+	// compare = (position / 90) * 1000 + 3000
+	// the computation shall be modified to fit in s16
+	// the result is sure to fit in u16
+	TMR1_compare_set(TMR1_B, ((s16)position * 100 / 9) + 3000);
 }
 
 

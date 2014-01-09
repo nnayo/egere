@@ -343,8 +343,8 @@ static u8 aero_opening_action(pt_t* pt, void* args)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
-	// cmde cone stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OFF)
+	// cmde cone open
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_CONE, FR_SERVO_OPEN)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -378,8 +378,8 @@ static u8 aero_open_action(pt_t* pt, void* args)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
-	// cmde aero stop
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OFF)
+	// cmde aero close
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_CLOSE)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
@@ -397,6 +397,11 @@ static u8 cone_closing_action(pt_t* pt, void* args)
 
 	// signal cone closing state
 	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_STATE, 0, FR_STATE_SET, FR_STATE_CONE_CLOSING)
+			&& OK == FIFO_put(&MNT.out_fifo, &fr)
+	);
+
+	// cmde aero stop
+	PT_WAIT_UNTIL(pt, frame_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_MINUT_SERVO_CMD, 0, FR_SERVO_AERO, FR_SERVO_OFF)
 			&& OK == FIFO_put(&MNT.out_fifo, &fr)
 	);
 
