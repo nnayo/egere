@@ -341,16 +341,56 @@ class AeroBrake(MecaComponent):
         data = self.data
         data['thick'] = tube['thick'] # mm
         data['ext diameter'] = tube['int diameter'] + tube['thick'] # mm
-        data['int diameter'] = tube['int diameter'] # mm
+        data['int diameter'] = tube['int diameter'] - tube['thick'] # mm
 
         # rebuild a tube
         int_part = Part.makeCylinder(data['int diameter'] / 2, data['len'])
         ext_part = Part.makeCylinder(data['ext diameter'] / 2, data['len'])
         part = ext_part.cut(int_part)
 
+        # cut the external shape
         shape = Part.makeBox(data['ext diameter'], data['width'], data['len'])
         shape.translate(Vector(-data['ext diameter'], -data['width'] / 2, 0))
 
         comp = part.common(shape)
+
+        # add a nerv
+        nerv = Part.makeBox(data['ext diameter'] / 2 - 2 * data['thick'], 3., data['len'] / 2)
+        nerv.translate(Vector(-data['ext diameter'] / 2 + data['thick'] / 2, -3. / 2, 0))
+
+        comp = comp.fuse(nerv)
+
+        MecaComponent.__init__(self, doc, comp, name, (1., 1., 0.))
+
+
+class AeroClutch(MecaComponent):
+    """the aero-clutch is the blocking system for the aero-brakes"""
+
+    def __init__(self, doc, tube, name='aero_clutch'):
+        self.data = {
+            'len': 20., # mm
+            'width' : 15., # mm
+        }
+        data = self.data
+        data['thick'] = tube['thick'] # mm
+        data['ext diameter'] = tube['int diameter'] - tube['thick'] # mm
+        data['int diameter'] = tube['int diameter'] - 3 * tube['thick'] # mm
+
+        # rebuild a tube
+        int_part = Part.makeCylinder(data['int diameter'] / 2, data['len'])
+        ext_part = Part.makeCylinder(data['ext diameter'] / 2, data['len'])
+        part = ext_part.cut(int_part)
+
+        # cut the external shape
+        shape = Part.makeBox(2 * data['ext diameter'], 2 * data['ext diameter'], data['len'])
+        shape.translate(Vector(-data['ext diameter'], -data['ext diameter'], 0))
+
+        comp = part.common(shape)
+
+        # cut the nerves
+        nerv = Part.makeBox(data['ext diameter'] / 2 - 2 * data['thick'], 3., data['len'] / 2)
+        nerv.translate(Vector(-data['ext diameter'] / 2 + data['thick'] / 2, -3. / 2, 0))
+
+        comp = comp.cut(nerv)
 
         MecaComponent.__init__(self, doc, comp, name, (1., 1., 0.))
