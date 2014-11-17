@@ -1,0 +1,8 @@
+*.map
+*.lix
+*.o
+*.pyc
+*.swp
+.sconsign.dblite
+*.elf
+soft/eeprom_frames.c
