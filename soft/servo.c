@@ -111,7 +111,7 @@ static void SRV_drive(u8 servo, u8 sense)
 	switch (servo) {
 	case FR_SERVO_CONE:
 		switch (sense) {
-		case FR_SERVO_OPEN:	// open
+		case FR_SERVO_OPEN:		// open
 			SRV_cone_on(SRV.cone.open_pos);
 			break;
 
@@ -130,7 +130,7 @@ static void SRV_drive(u8 servo, u8 sense)
 
 	case FR_SERVO_AERO:
 		switch (sense) {
-		case FR_SERVO_OPEN:	// open
+		case FR_SERVO_OPEN:		// open
 			SRV_aero_on(SRV.aero.open_pos);
 			break;
 
@@ -156,7 +156,7 @@ static void SRV_drive(u8 servo, u8 sense)
 static void SRV_cone_save(frame_t* fr)
 {
 	switch ( fr->argv[2] ) {
-	case FR_SERVO_OPEN:	// open position
+	case FR_SERVO_OPEN:		// open position
 		SRV.cone.open_pos = fr->argv[3];
 		break;
 
@@ -175,7 +175,7 @@ static void SRV_cone_save(frame_t* fr)
 static void SRV_cone_read(frame_t* fr)
 {
 	switch ( fr->argv[2] ) {
-	case FR_SERVO_OPEN:	// open position
+	case FR_SERVO_OPEN:		// open position
 		fr->argv[3] = SRV.cone.open_pos;
 		break;
 
@@ -193,7 +193,7 @@ static void SRV_cone_read(frame_t* fr)
 static void SRV_aero_save(frame_t* fr)
 {
 	switch ( fr->argv[2] ) {
-	case FR_SERVO_OPEN:	// open position
+	case FR_SERVO_OPEN:		// open position
 		SRV.aero.open_pos = fr->argv[3];
 		break;
 
@@ -212,7 +212,7 @@ static void SRV_aero_save(frame_t* fr)
 static void SRV_aero_read(frame_t* fr)
 {
 	switch ( fr->argv[2] ) {
-	case FR_SERVO_OPEN:	// open position
+	case FR_SERVO_OPEN:		// open position
 		fr->argv[3] = SRV.aero.open_pos;
 		break;
 

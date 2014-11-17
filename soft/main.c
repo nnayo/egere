@@ -40,76 +40,78 @@ A5      PC5     scl
 GND     GND     ground
 
 
-MPU-6050	function
+MPU-6050		function
 ---------------+--------
 
-sda		sda
-scl		scl
+sda				sda
+scl				scl
 
-+5V		power in
-GND		ground
++5V				power in
+GND				ground
 
 
-servo cône	function
+servo cône		function
 ---------------+--------
 
-+5V		power in
-ctrl		control signal
-GND		ground
++5V				power in
+ctrl			control signal
+GND				ground
 
 
-servo aero	function
+servo aero		function
 ---------------+--------
 
-+5V		power in
-ctrl		control signal
-GND		ground
++5V				power in
+ctrl			control signal
+GND				ground
 
 
-switch		function
+switch			function
 ---------------+--------
 
-GND		ground
-sig		signal
+GND				ground
+sig				signal
 
 
 
-relay card	function
+relay card		function
 ---------------+--------
 
-+9V		power in (accu)
-	GND		ground (accu)
++9V				power in (accu)
+GND				ground (accu)
 
-	+6V		power out (servo cone)
-	GND		ground (servo cone)
-	+6V		power out (servo aero)
-	GND		ground (servo aero)
++6V				power out (servo cone)
+GND				ground (servo cone)
++6V				power out (servo aero)
+GND				ground (servo aero)
 
-	+9V		power out (arduino)
-	+5V		power in (arduino)
-	GND		ground (arduino)
++9V				power out (arduino)
++5V				power in (arduino)
+GND				ground (arduino)
 
-	+5V		power out (MPU)
-	GND		ground (MPU)
++5V				power out (MPU)
+GND				ground (MPU)
 
-	sig		signal in (switch)
-	sig		signal out (arduino)
-	GND		ground (switch)
+sig				signal in (switch)
+sig				signal out (arduino)
+GND				ground (switch)
 
-	sda		sda (arduino)
-	sda		sda (MPU)
-	scl		scl(arduino)
-	scl		scl(MPU)
+sda				sda (arduino)
+sda				sda (MPU)
+scl				scl(arduino)
+scl				scl(MPU)
 
-	ctrl		ctrl servo aero (arduino)
-	ctrl		ctrl servo aero (servo)
+ctrl			ctrl servo aero (arduino)
+ctrl			ctrl servo aero (servo)
 
-	ctrl		ctrl servo cone (arduino)
-	ctrl		ctrl servo cone (servo)
+ctrl			ctrl servo cone (arduino)
+ctrl			ctrl servo cone (servo)
 
-	led alive	signal in (arduino)
-	led take-off	signal in (arduino)
+led alive		signal in (arduino)
+led take-off	signal in (arduino)
+
 #endif
+
 
 // ------------------------------------------
 // simavr options
@@ -255,15 +257,6 @@ int main(void)
 		SRV_run();
 		MPU_run();
 		TKF_run();
-
-//#define DEBUG
-#if DEBUG
-		if ( TIME_get() > 20 * TIME_1_SEC ) {
-			cli();
-#include <avr/sleep.h>
-			sleep_mode();
-		}
-#endif
 	}
 
 	// this point is never reached
