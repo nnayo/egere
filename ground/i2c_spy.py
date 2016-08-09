@@ -10,6 +10,7 @@ IO connection:
 """
 
 import pyBusPirateLite.I2C as bp
+import frame
 
 import sys
 
@@ -89,8 +90,30 @@ def spy_raw(spy):
 
 def spy_with_decode(spy):
     """display decoded I2C frames"""
+    fr = frame.Frame()
+    dc = fr.get_derived_class()
+
     def print_dec(frame):
-        print('> ' + frame + ' decoding to be done...')
+        print('> ' + frame)
+
+        dest, orig, t_id, cmde, stat = frame[:5]
+        data = frame[5:]
+
+        st = 'dest = 0x%02x, ' % dest
+        st += 'orig = 0x%02x, ' % orig
+        st += 't id = 0x%02x, ' % t_id
+        st += 'cmde = 0x%02x ' % cmde
+        st += '(%s), ' % dc[cmde].__name__
+        st += 'stat = 0b%08b = ' % stat
+        st += '{.err = %b, .rsp = %b, .len = %d} ' % (
+                stat & 0b1000000,
+                stat & 0b0100000,
+                stat & 0b0000111,
+        )
+        st += ' data = ['
+        st += ''.join(['0x%02x, ' % d for d in data])
+        st += ']'
+        print(st)
 
     print('égère I2C spy with égère frame decoding\n')
     _spy(spy, print_dec)
