@@ -1,94 +1,116 @@
-NANOK_DIR	= /home/yog/TRoll/projects/nanoK
-NANOK_CONF_PATH	= /home/yog/TRoll/projects/TROY/soft/vol/minut
-COMMON_DIR	= ../common
+TROLL_PROJECTS = /home/yog/TRoll/projects
+NANOK_DIR = $(TROLL_PROJECTS)/nanoK
+SCALP_DIR = ./scalp
 
-PRG		= minut
-OBJ		= minut.o
-TASKS_OBJ	= TASK_back_gnd.o TASK_minut.o TASK_servo.o
+PRG = minut
+SRCS = main.c minut.c mpu6050.c servo.c eeprom.c
+OBJS = main.o minut.o mpu6050.o servo.o eeprom.o
 
-#MCU_TARGET	= atmega128
-#MCU_TARGET	= atmega16
-MCU_TARGET	= atmega32
-OPTIMIZE	= -Os -mcall-prologues -fshort-enums -Wall
-#OPTIMIZE	= -Os -mcall-prologues -fnew-ra
+CC = avr-gcc
+CFLAGS = \
+		 -g -std=c99 \
+		 -Wall -Wextra -Werror \
+		 -Os -mcall-prologues -fshort-enums \
+		 -mmcu=atmega328p \
+		 -I. \
+		 -I$(NANOK_DIR) \
+		 -I$(SCALP_DIR) \
+		 -I$(TROLL_PROJECTS)/simavr/simavr/sim/avr
 
-#DEFS		= -I$(NANOK_DIR)/nanoK -I$(NANOK_DIR)/nanoK/utils -I$(NANOK_DIR)/nanoK/tasks -I.
-#DEFS		= -I. -I$(NANOK_DIR) -I$(NANOK_DIR)/drivers -I$(NANOK_DIR)/utils -I..
-DEFS		= -I. -I$(NANOK_DIR) -I$(COMMON_DIR) -I..
-LIBS		= -lm
+LDFLAGS = \
+		  -g \
+		  -Os -mcall-prologues -fshort-enums \
+		  -mmcu=atmega328p \
+		  -Wl,-Map,$(PRG).map,--cref \
+		  -Wl,--undefined=_mmcu,--section-start=.mmcu=0x8000 \
+		  -lm \
+		  -L$(NANOK_DIR) -lnanoK \
+		  -L$(SCALP_DIR) -lscalp
 
-#DEBUG		= -gdwarf-2
-DEBUG		= -g
+OBJCOPY = avr-objcopy
+OBJDUMP = avr-objdump
 
-# You should not have to change anything below here.
+AVRDUDE = avrdude
+AVRDUDEFLAGS = -P /dev/ttyACM0 -p atmega328p -c arduino
 
-CC		= avr-gcc
-AVRDUDE		= avrdude -P /dev/ttyACM0 -p atmega328p -c arduino
+# for dependency autogeneration
+# part #1
+DEPDIR = .deps
+$(shell mkdir -p $(DEPDIR) >/dev/null)
+DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 
-# Override is only needed by avr-lib build system.
+COMPILE.c = $(CC) $(DEPFLAGS) $(CFLAGS) -c
+POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
-override CFLAGS        = $(DEBUG) -Wall $(OPTIMIZE) -mmcu=$(MCU_TARGET) $(DEFS)
-override LDFLAGS       = -Wl,-Map,$(PRG).map,--cref,-T $(NANOK_DIR)/nanoK.x
+%.o : %.c
+%.o : %.c $(DEPDIR)/%.d
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+	$(POSTCOMPILE)
 
-OBJCOPY        = avr-objcopy
-OBJDUMP        = avr-objdump
+$(DEPDIR)/%.d: ;
+.PRECIOUS: $(DEPDIR)/%.d
+# end part #1
 
-#all: $(PRG).elf lst text eeprom
-all: $(PRG).elf lst
+
+.PHONY: all clean very_clean
+
+all: $(PRG).elf lix
 	avr-size $(PRG).elf
 
-libnanoK.a: force
-	@cd $(NANOK_DIR); make -e NANOK_CONF_PATH=$(NANOK_CONF_PATH)
-	cp $(NANOK_DIR)/libnanoK.a . 
+$(PRG).elf: $(OBJS) $(SCALP_DIR)/libscalp.a $(NANOK_DIR)/libnanoK.a
+	$(CC) $(LDFLAGS) $^ -o $@
 
-libcommon.a: libnanoK.a force
-	@cd $(COMMON_DIR); make -e NANOK_CONF_PATH=$(NANOK_CONF_PATH)
-	cp $(COMMON_DIR)/libcommon.a . 
+$(OBJS): $(SCALP_DIR)/libscalp.a $(NANOK_DIR)/libnanoK.a
 
-force:
+$(NANOK_DIR)/libnanoK.a:
+	make -C $(NANOK_DIR)
 
-$(PRG).elf: $(OBJ) $(TASKS_OBJ) libcommon.a libnanoK.a
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LIBS) -L. -lnanoK -lcommon $^ -o $@
+$(SCALP_DIR)/libscalp.a:
+	make -C $(SCALP_DIR)
 
-
-eeprom: minut.bin
-	$(AVRDUDE) -D -U eeprom:w:minut.bin:r
+eeprom.hex: $(PRG).elf
+	$(OBJCOPY) -j .eeprom --change-section-lma .eeprom=0 -O ihex $< $@
+	
+eeprom: eeprom.hex
+	$(AVRDUDE) $(AVRDUDEFLAGS) -D -U eeprom:w:eeprom_scalps.hex:r
 
 
 $(PRG).hex: $(PRG).elf
-	$(OBJCOPY) -O ihex -R .eeprom $(PRG).elf $(PRG).hex
+	$(OBJCOPY) -O ihex -R .eeprom -R .mmcu $(PRG).elf $(PRG).hex
 
 load: $(PRG).hex
-	$(AVRDUDE) -U flash:w:$(PRG).hex
+	$(AVRDUDE) $(AVRDUDEFLAGS) -U flash:w:$(PRG).hex
 
 
 term:
-	$(AVRDUDE) -t
+	$(AVRDUDE) $(AVRDUDEFLAGS) -t
 
 
 clean:
-	rm -rf *.o $(PRG).elf *.eps *.png *.pdf *.bak 
-	rm -rf *.lst *.map *.bin $(EXTRA_CLEAN_FILES)
-	rm -fr *~
-	rm -f $(OBJ)
-	rm -f libcommon.a libnanoK.a
-	@cd $(COMMON_DIR); make clean
+	rm -rf *.o $(PRG).elf *.bak eeprom.c
+	rm -rf *.lix *.map *.bin
+	make -C $(NANOK_DIR) clean
+	make -C $(SCALP_DIR) clean
 
 very_clean: clean
 	rm -fr *.*~
-	rm -fr *.*bak
 	rm -fr *.*swp
-	@cd $(COMMON_DIR); make very_clean
+	rm -fr $(DEPDIR) __pycache__
+	@cd $(NANOK_DIR); make very_clean
+	@cd $(SCALP_DIR); make very_clean
 
-lst:  $(PRG).lst
+lix:  $(PRG).lix
 
-%.lst: %.elf
-	$(OBJDUMP) -S -x -p $< > $@
-#	$(OBJDUMP) -h -S -x -D -s -g -t -a -f -p $< > $@
-#	$(OBJDUMP) -h -S $< > $@
+%.lix: %.elf
+	$(OBJDUMP) -Sdx $< > $@
 
-%.o: %.h
+eeprom.c: ./gen_eeprom.py
+	./gen_eeprom.py eeprom.c
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $^ -o $@
-	avr-size $@
+eeprom.o: eeprom.c
+
+# for dependency autogeneration
+# part #2
+-include $(patsubst %,$(DEPDIR)/%.d,$(basename $(SRCS)))
+# end part #2
+
