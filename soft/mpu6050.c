@@ -6,7 +6,7 @@
 #include "utils/fifo.h"
 #include "utils/time.h"
 
-#include <string.h>		// memcpy()
+#include <string.h>                // memcpy()
 
 
 // MPU-6050 write protocol:
@@ -32,37 +32,37 @@
 //
 
 // uncomment the define below to use the SC18IS600 SPI-I2C bridge
-#define USE_SC18IS600
+//#define USE_SC18IS600
 
 #ifdef USE_SC18IS600
 # include "sc18is600.h"
 #endif
 
-#define IN_FIFO_SIZE	1
+#define IN_FIFO_SIZE        1
 
-#define MPU_I2C_ADDR	(0x68 >> 1)
+#define MPU_I2C_ADDR        (0x68 >> 1)
 
-#define MPU6050_WHO_AM_I		0x75
-#define MPU6050_SMPLRT_DIV		0x19
-#define MPU6050_CONFIG			0x1a
-#define MPU6050_GYRO_CONFIG		0x1b
-#define MPU6050_ACCEL_CONFIG	0x1c
-#define MPU6050_PWR_MGMT_1		0x6b
+#define MPU6050_WHO_AM_I     0x75
+#define MPU6050_SMPLRT_DIV   0x19
+#define MPU6050_CONFIG       0x1a
+#define MPU6050_GYRO_CONFIG  0x1b
+#define MPU6050_ACCEL_CONFIG 0x1c
+#define MPU6050_PWR_MGMT_1   0x6b
 
-#define MPU6050_ACCEL_XOUT_H	0x3b
-#define MPU6050_ACCEL_XOUT_L	0x3c
-#define MPU6050_ACCEL_YOUT_H	0x3d
-#define MPU6050_ACCEL_YOUT_L	0x3e
-#define MPU6050_ACCEL_ZOUT_H	0x3f
-#define MPU6050_ACCEL_ZOUT_L	0x40
-#define MPU6050_TEMP_OUT_H		0x41
-#define MPU6050_TEMP_OUT_L		0x42
-#define MPU6050_GYRO_XOUT_H		0x43
-#define MPU6050_GYRO_XOUT_L		0x44
-#define MPU6050_GYRO_YOUT_H		0x45
-#define MPU6050_GYRO_YOUT_L		0x46
-#define MPU6050_GYRO_ZOUT_H		0x47
-#define MPU6050_GYRO_ZOUT_L		0x48
+#define MPU6050_ACCEL_XOUT_H 0x3b
+#define MPU6050_ACCEL_XOUT_L 0x3c
+#define MPU6050_ACCEL_YOUT_H 0x3d
+#define MPU6050_ACCEL_YOUT_L 0x3e
+#define MPU6050_ACCEL_ZOUT_H 0x3f
+#define MPU6050_ACCEL_ZOUT_L 0x40
+#define MPU6050_TEMP_OUT_H   0x41
+#define MPU6050_TEMP_OUT_L   0x42
+#define MPU6050_GYRO_XOUT_H  0x43
+#define MPU6050_GYRO_XOUT_L  0x44
+#define MPU6050_GYRO_YOUT_H  0x45
+#define MPU6050_GYRO_YOUT_L  0x46
+#define MPU6050_GYRO_ZOUT_H  0x47
+#define MPU6050_GYRO_ZOUT_L  0x48
 
 
 // ------------------------------------------
@@ -70,40 +70,40 @@
 //
 
 struct {
-	pt_t pt;					// pt for sending thread
-	dpt_interface_t interf;		// interface to the dispatcher
-	u8 started;
+        pt_t pt;                                        // pt for sending thread
+        struct scalp_dpt_interface interf;                // interface to the dispatcher
+        u8 started;
 
-	pt_t pt_spawn;				// pt for spawned threads
+        pt_t pt_spawn;                                // pt for spawned threads
 #ifdef USE_SC18IS600
-	pt_t pt_spawn_2;			// pt for spawned threads
+        pt_t pt_spawn_2;                        // pt for spawned threads
     u8 rx[10];
     u8 n;
 #endif
 
-	frame_t in_buf[IN_FIFO_SIZE];
-	fifo_t in_fifo;
-	frame_t in_fr;				// incoming frame for acquisitions or commands
+        struct scalp in_buf[IN_FIFO_SIZE];
+        struct nnk_fifo in_fifo;
+        struct scalp in_fr;                                // incoming frame for acquisitions or commands
 
-	u32 time_out;
+        u32 time_out;
 
-	struct {
-		u8 acc_x_hi;			// accel X axis MSB
-		u8 acc_x_lo;			// accel X axis LSB
-		u8 acc_y_hi;			// accel Y axis MSB
-		u8 acc_y_lo;			// accel Y axis LSB
-		u8 acc_z_hi;			// accel Z axis MSB
-		u8 acc_z_lo;			// accel Z axis LSB
-		u8 temp_hi;				// temperature MSB
-		u8 temp_lo;				// temperature LSB
-		u8 gyro_x_hi;			// gyro X axis MSB
-		u8 gyro_x_lo;			// gyro X axis LSB
-		u8 gyro_y_hi;			// gyro Y axis MSB
-		u8 gyro_y_lo;			// gyro Y axis LSB
-		u8 gyro_z_hi;			// gyro Z axis MSB
-		u8 gyro_z_lo;			// gyro Z axis LSB
-	} data;
-} MPU;
+        struct {
+                u8 acc_x_hi;                        // accel X axis MSB
+                u8 acc_x_lo;                        // accel X axis LSB
+                u8 acc_y_hi;                        // accel Y axis MSB
+                u8 acc_y_lo;                        // accel Y axis LSB
+                u8 acc_z_hi;                        // accel Z axis MSB
+                u8 acc_z_lo;                        // accel Z axis LSB
+                u8 temp_hi;                                // temperature MSB
+                u8 temp_lo;                                // temperature LSB
+                u8 gyro_x_hi;                        // gyro X axis MSB
+                u8 gyro_x_lo;                        // gyro X axis LSB
+                u8 gyro_y_hi;                        // gyro Y axis MSB
+                u8 gyro_y_lo;                        // gyro Y axis LSB
+                u8 gyro_z_hi;                        // gyro Z axis MSB
+                u8 gyro_z_lo;                        // gyro Z axis LSB
+        } data;
+} mpu;
 
 
 // ------------------------------------------
@@ -111,233 +111,222 @@ struct {
 //
 
 
-static PT_THREAD( MPU_init_pt_thread(pt_t* pt) )
+static PT_THREAD( mpu_init_pt_thread(pt_t* pt) )
 {
-	frame_t fr;
+        struct scalp fr;
 
-	PT_BEGIN(pt);
+        PT_BEGIN(pt);
 
 #ifndef USE_SC18IS600
-	// hard init
-	DPT_lock(&MPU.interf);
+        // hard init
+        scalp_dpt_lock(&mpu.interf);
 #else
     u8 tx[5];
 #endif
 
-	// set reg index to WHO_AM_I reg
+        // set reg index to WHO_AM_I reg
 #ifndef USE_SC18IS600
-	PT_WAIT_UNTIL(pt, frame_set_1(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_WRITE, 1, MPU6050_WHO_AM_I)
-			&& DPT_tx(&MPU.interf, &fr));
-	// wait response
-	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
+        PT_WAIT_UNTIL(pt, scalp_set_1(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, SCALP_TWIWRITE, 1, MPU6050_WHO_AM_I)
+                        && scalp_dpt_tx(&mpu.interf, &fr));
+        // wait response
+        PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&mpu.in_fifo, &fr));
 
-	// check it
-	if ( fr.resp != 1 || fr.error != 0 || fr.orig != MPU_I2C_ADDR ) {
-		// on error, retry
-		PT_RESTART(pt);
-	}
+        // check it
+        if ( fr.resp != 1 || fr.error != 0 || fr.orig != MPU_I2C_ADDR ) {
+                // on error, retry
+                PT_RESTART(pt);
+        }
 #else
     tx[0] = MPU6050_WHO_AM_I;
-    MPU.n = 1;
-    PT_SPAWN(pt, &MPU.pt_spawn_2, SC18IS600_tx(&MPU.pt_spawn_2, MPU_I2C_ADDR, tx, &MPU.n));
+    mpu.n = 1;
+    PT_SPAWN(pt, &mpu.pt_spawn_2, SC18IS600_tx(&mpu.pt_spawn_2, MPU_I2C_ADDR, tx, &mpu.n));
 #endif
 
-	// read WHO_AM_I reg
+        // read WHO_AM_I reg
 #ifndef USE_SC18IS600
-	PT_WAIT_UNTIL(pt, frame_set_0(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_READ, 1)
-			&& DPT_tx(&MPU.interf, &fr));
-	// wait response
-	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
+        PT_WAIT_UNTIL(pt, scalp_set_0(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, SCALP_TWIREAD, 1)
+                        && scalp_dpt_tx(&mpu.interf, &fr));
+        // wait response
+        PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&mpu.in_fifo, &fr));
 #else
-    MPU.n = 1;
-    PT_SPAWN(pt, &MPU.pt_spawn_2, SC18IS600_rx(&MPU.pt_spawn_2, MPU_I2C_ADDR, MPU.rx, &MPU.n));
+    mpu.n = 1;
+    PT_SPAWN(pt, &mpu.pt_spawn_2, SC18IS600_rx(&mpu.pt_spawn_2, MPU_I2C_ADDR, mpu.rx, &mpu.n));
 #endif
 
 
-	// check WHO_AM_I : shall read 0x68
+        // check WHO_AM_I : shall read 0x68
 #ifndef USE_SC18IS600
-	if ( fr.resp != 1 || fr.error != 0 || fr.argv[0] != 0x68 ) {
-		// on error, retry
-		PT_RESTART(pt);
-	}
+        if ( fr.resp != 1 || fr.error != 0 || fr.argv[0] != 0x68 ) {
+                // on error, retry
+                PT_RESTART(pt);
+        }
 #else
-    if ( MPU.rx[0] != 0x68 ) {
-		// on error, retry
-		PT_RESTART(pt);
-	}
+    if ( mpu.rx[0] != 0x68 ) {
+                // on error, retry
+                PT_RESTART(pt);
+        }
 #endif
 
-	// set sampling rate to 100 Hz ( 1kHz / 10 ) : SMPLRT_DIV = 9
-	// disable external sampling pin and enable DLPF at ~100 Hz : CONFIG = 2
-	// set gyro full scale to 500 deg / s : GYRO_CONFIG = 0x08
-	// set accel full scale to +-16G : ACCEL_CONFIG = 0x18
+        // set sampling rate to 100 Hz ( 1kHz / 10 ) : SMPLRT_DIV = 9
+        // disable external sampling pin and enable DLPF at ~100 Hz : CONFIG = 2
+        // set gyro full scale to 500 deg / s : GYRO_CONFIG = 0x08
+        // set accel full scale to +-16G : ACCEL_CONFIG = 0x18
 
-	// set reg index to SMPLRT_DIV reg
-	// write SMPLRT_DIV, CONFIG, GYRO_CONFIG and ACCEL_CONFIG in a raw
+        // set reg index to SMPLRT_DIV reg
+        // write SMPLRT_DIV, CONFIG, GYRO_CONFIG and ACCEL_CONFIG in a raw
 #ifndef USE_SC18IS600
-	PT_WAIT_UNTIL(pt, frame_set_5(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_WRITE, 5, MPU6050_SMPLRT_DIV, 0x09, 0x02, 0x08, 0x18)
-			&& DPT_tx(&MPU.interf, &fr));
-	// wait response
-	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
+        PT_WAIT_UNTIL(pt, scalp_set_5(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, SCALP_TWIWRITE, 5, MPU6050_SMPLRT_DIV, 0x09, 0x02, 0x08, 0x18)
+                        && scalp_dpt_tx(&mpu.interf, &fr));
+        // wait response
+        PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&mpu.in_fifo, &fr));
 #else
     tx[0] = MPU6050_SMPLRT_DIV;
     tx[1] = 0x09;
     tx[2] = 0x02;
     tx[3] = 0x08;
     tx[4] = 0x18;
-    MPU.n = 5;
-    PT_SPAWN(pt, &MPU.pt_spawn_2, SC18IS600_tx(&MPU.pt_spawn_2, MPU_I2C_ADDR, tx, &MPU.n));
+    mpu.n = 5;
+    PT_SPAWN(pt, &mpu.pt_spawn_2, SC18IS600_tx(&mpu.pt_spawn_2, MPU_I2C_ADDR, tx, &mpu.n));
 #endif
 
-	// quit sleep mode : PWR_MGMT_1 = 0x00
+        // quit sleep mode : PWR_MGMT_1 = 0x00
 #ifndef USE_SC18IS600
-	PT_WAIT_UNTIL(pt, frame_set_2(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_WRITE, 2, MPU6050_PWR_MGMT_1, 0x00)
-			&& DPT_tx(&MPU.interf, &fr));
-	// wait response
-	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
+        PT_WAIT_UNTIL(pt, scalp_set_2(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, SCALP_TWIWRITE, 2, MPU6050_PWR_MGMT_1, 0x00)
+                        && scalp_dpt_tx(&mpu.interf, &fr));
+        // wait response
+        PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&mpu.in_fifo, &fr));
 
-	DPT_unlock(&MPU.interf);
+        scalp_dpt_unlock(&mpu.interf);
 #else
     tx[0] = MPU6050_PWR_MGMT_1;
     tx[1] = 0x00;
-    MPU.n = 2;
-    PT_SPAWN(pt, &MPU.pt_spawn_2, SC18IS600_tx(&MPU.pt_spawn_2, MPU_I2C_ADDR, tx, &MPU.n));
+    mpu.n = 2;
+    PT_SPAWN(pt, &mpu.pt_spawn_2, SC18IS600_tx(&mpu.pt_spawn_2, MPU_I2C_ADDR, tx, &mpu.n));
 #endif
 
-	PT_EXIT(pt);
+        PT_EXIT(pt);
 
-	PT_END(pt);
+        PT_END(pt);
 }
 
 
-static PT_THREAD( MPU_acquisition(pt_t* pt, u8 len, frame_t* fr) )
+static PT_THREAD( mpu_acquisition(pt_t* pt, u8 len, struct scalp* fr) )
 {
-	PT_BEGIN(pt);
+        PT_BEGIN(pt);
 
 #ifndef USE_SC18IS600
-	// grant access for tx
-	DPT_lock(&MPU.interf);
+        // grant access for tx
+        scalp_dpt_lock(&mpu.interf);
 #endif
 
-	// send a frame with the specified length
+        // send a frame with the specified length
 #ifndef USE_SC18IS600
-	PT_WAIT_UNTIL(pt, frame_set_0(fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_READ, len)
-			&& DPT_tx(&MPU.interf, fr));
-	// wait response
-	PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, fr));
+        PT_WAIT_UNTIL(pt, scalp_set_0(fr, MPU_I2C_ADDR, DPT_SELF_ADDR, SCALP_TWIREAD, len)
+                        && scalp_dpt_tx(&mpu.interf, fr));
+        // wait response
+        PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&mpu.in_fifo, fr));
 #else
-    MPU.n = len;
-    PT_SPAWN(pt, &MPU.pt_spawn_2, SC18IS600_rx(&MPU.pt_spawn_2, MPU_I2C_ADDR, MPU.rx, &MPU.n));
-    memcpy(fr->argv, MPU.rx, MPU.n);
+    mpu.n = len;
+    PT_SPAWN(pt, &mpu.pt_spawn_2, SC18IS600_rx(&mpu.pt_spawn_2, MPU_I2C_ADDR, mpu.rx, &mpu.n));
+    memcpy(fr->argv, mpu.rx, mpu.n);
 #endif
 
 #ifndef USE_SC18IS600
-	// check it
-	if ( fr->resp != 1 || fr->error != 0 || fr->orig != MPU_I2C_ADDR ) {
-		// on error, retry
-		PT_RESTART(pt);
-	}
+        // check it
+        if ( fr->resp != 1 || fr->error != 0 || fr->orig != MPU_I2C_ADDR ) {
+                // on error, retry
+                PT_RESTART(pt);
+        }
 #endif
 
 #ifndef USE_SC18IS600
-	DPT_unlock(&MPU.interf);
+        scalp_dpt_unlock(&mpu.interf);
 #endif
 
-	PT_END(pt);
+        PT_END(pt);
 }
 
 
-static PT_THREAD( MPU_thread(pt_t* pt) )
+static PT_THREAD( mpu_thread(pt_t* pt) )
 {
-	frame_t fr;
+        struct scalp fr;
 #ifdef USE_SC18IS600
-    u8 tx[1];
-    u8 n;
+        u8 tx[1];
+        u8 n;
 #endif
 
-	PT_BEGIN(pt);
-
-	// wait application start signal
-	if ( ! MPU.started ) {
-		PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
-		if ( fr.cmde == FR_APPLI_START ) {
-			MPU.started = 1;
-		}
-		else {
-			PT_RESTART(pt);
-		}
-	}
+        PT_BEGIN(pt);
 
 #ifdef USE_SC18IS600
-    PT_SPAWN(pt, &MPU.pt_spawn, SC18IS600_init(&MPU.pt_spawn));
+        PT_SPAWN(pt, &mpu.pt_spawn, SC18IS600_init(&mpu.pt_spawn));
 #endif
-	// check MPU hardware init
-	PT_SPAWN(pt, &MPU.pt_spawn, MPU_init_pt_thread(&MPU.pt_spawn));
+        // check MPU hardware init
+        PT_SPAWN(pt, &mpu.pt_spawn, mpu_init_pt_thread(&mpu.pt_spawn));
 
-	MPU.time_out = 1 * TIME_1_SEC;
-	while (1) {
-		// data acquisition every 10 ms (100 Hz)
-		PT_WAIT_UNTIL(pt, TIME_get() >= MPU.time_out);
+        mpu.time_out = 1 * TIME_1_SEC;
+        while (1) {
+                // data acquisition every 10 ms (100 Hz)
+                PT_WAIT_UNTIL(pt, nnk_time_get() >= mpu.time_out);
 
-		MPU.time_out += 100 * TIME_1_MSEC;
+                mpu.time_out += 100 * TIME_1_MSEC;
 
 #ifndef USE_SC18IS600
-		DPT_lock(&MPU.interf);
+                scalp_dpt_lock(&mpu.interf);
 #endif
 
-		// set reg index to MPU6050_ACCEL_XOUT_H reg
+                // set reg index to MPU6050_ACCEL_XOUT_H reg
 #ifndef USE_SC18IS600
-		PT_WAIT_UNTIL(pt, frame_set_1(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, FR_I2C_WRITE, 1, MPU6050_ACCEL_XOUT_H)
-				&& DPT_tx(&MPU.interf, &fr));
-		// wait response
-		PT_WAIT_UNTIL(pt, OK == FIFO_get(&MPU.in_fifo, &fr));
+                PT_WAIT_UNTIL(pt, scalp_set_1(&fr, MPU_I2C_ADDR, DPT_SELF_ADDR, SCALP_TWIWRITE, 1, MPU6050_ACCEL_XOUT_H)
+                                && scalp_dpt_tx(&mpu.interf, &fr));
+                // wait response
+                PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&mpu.in_fifo, &fr));
 #else
     tx[0] = MPU6050_ACCEL_XOUT_H;
     n = 1;
-    PT_SPAWN(pt, &MPU.pt_spawn_2, SC18IS600_tx(&MPU.pt_spawn_2, MPU_I2C_ADDR, tx, &n));
+    PT_SPAWN(pt, &mpu.pt_spawn_2, SC18IS600_tx(&mpu.pt_spawn_2, MPU_I2C_ADDR, tx, &n));
 #endif
 
 #ifndef USE_SC18IS600
-		// check it
-		if ( fr.resp != 1 || fr.error != 0 || fr.orig != MPU_I2C_ADDR ) {
-			// on error, retry
-			DPT_unlock(&MPU.interf);
-			continue;
-		}
+                // check it
+                if ( fr.resp != 1 || fr.error != 0 || fr.orig != MPU_I2C_ADDR ) {
+                        // on error, retry
+                        scalp_dpt_unlock(&mpu.interf);
+                        continue;
+                }
 #endif
 
-		// accel data: read burst from 0x3b to 0x40 (6 regs) 3 x 16-bit MSL first
-		PT_SPAWN(pt, &MPU.pt_spawn, MPU_acquisition(&MPU.pt_spawn, 6, &fr));
+                // accel data: read burst from 0x3b to 0x40 (6 regs) 3 x 16-bit MSL first
+                PT_SPAWN(pt, &mpu.pt_spawn, mpu_acquisition(&mpu.pt_spawn, 6, &fr));
 
-		// save data
-		memcpy(&MPU.data.acc_x_hi, &fr.argv[0], 6);
+                // save data
+                memcpy(&mpu.data.acc_x_hi, &fr.argv[0], 6);
 
-		// temp data: read burst from 0x41 to 0x42 (2 regs) 16-bit MSB first
-		PT_SPAWN(pt, &MPU.pt_spawn, MPU_acquisition(&MPU.pt_spawn, 2, &fr));
+                // temp data: read burst from 0x41 to 0x42 (2 regs) 16-bit MSB first
+                PT_SPAWN(pt, &mpu.pt_spawn, mpu_acquisition(&mpu.pt_spawn, 2, &fr));
 
-		// save data
-		memcpy(&MPU.data.temp_hi, &fr.argv[0], 2);
+                // save data
+                memcpy(&mpu.data.temp_hi, &fr.argv[0], 2);
 
-		// gyro data: read burst from 0x43 to 0x48 (6 regs) 3 x 16-bit MSL first
-		PT_SPAWN(pt, &MPU.pt_spawn, MPU_acquisition(&MPU.pt_spawn, 6, &fr));
+                // gyro data: read burst from 0x43 to 0x48 (6 regs) 3 x 16-bit MSL first
+                PT_SPAWN(pt, &mpu.pt_spawn, mpu_acquisition(&mpu.pt_spawn, 6, &fr));
 
-		// save data
-		memcpy(&MPU.data.gyro_x_hi, &fr.argv[0], 6);
+                // save data
+                memcpy(&mpu.data.gyro_x_hi, &fr.argv[0], 6);
 
-		DPT_lock(&MPU.interf);
+                scalp_dpt_lock(&mpu.interf);
 
-		// build and send the acceleration data
-		PT_WAIT_UNTIL(pt, frame_set_6(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_DATA_ACC, 6, MPU.data.acc_x_hi, MPU.data.acc_x_lo, MPU.data.acc_y_hi, MPU.data.acc_y_lo, MPU.data.acc_z_hi, MPU.data.acc_z_lo)
-				&& DPT_tx(&MPU.interf, &fr));
+                // build and send the acceleration data
+                PT_WAIT_UNTIL(pt, scalp_set_6(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_MPUACC, 6, mpu.data.acc_x_hi, mpu.data.acc_x_lo, mpu.data.acc_y_hi, mpu.data.acc_y_lo, mpu.data.acc_z_hi, mpu.data.acc_z_lo)
+                                && scalp_dpt_tx(&mpu.interf, &fr));
 
-		// build and send the gyroscopic data
-		PT_WAIT_UNTIL(pt, frame_set_6(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, FR_DATA_GYR, 6, MPU.data.gyro_x_hi, MPU.data.gyro_x_lo, MPU.data.gyro_y_hi, MPU.data.gyro_y_lo, MPU.data.gyro_z_hi, MPU.data.gyro_z_lo)
-				&& DPT_tx(&MPU.interf, &fr));
+                // build and send the gyroscopic data
+                PT_WAIT_UNTIL(pt, scalp_set_6(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_MPUGYR, 6, mpu.data.gyro_x_hi, mpu.data.gyro_x_lo, mpu.data.gyro_y_hi, mpu.data.gyro_y_lo, mpu.data.gyro_z_hi, mpu.data.gyro_z_lo)
+                                && scalp_dpt_tx(&mpu.interf, &fr));
 
-		DPT_unlock(&MPU.interf);
-	}
+                scalp_dpt_unlock(&mpu.interf);
+        }
 
-	PT_END(pt);
+        PT_END(pt);
 }
 
 
@@ -345,24 +334,24 @@ static PT_THREAD( MPU_thread(pt_t* pt) )
 // public functions
 //
 
-void MPU_init(void)
+void mpu_init(void)
 {
-	// init
-	FIFO_init(&MPU.in_fifo, &MPU.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
+        // init
+        nnk_fifo_init(&mpu.in_fifo, &mpu.in_buf, IN_FIFO_SIZE, sizeof(struct scalp));
 
-	MPU.interf.channel = 9;
-	//MPU.interf.cmde_mask = _CM(FR_I2C_READ) | _CM(FR_I2C_WRITE);
-	MPU.interf.cmde_mask = _CM(FR_I2C_READ) | _CM(FR_I2C_WRITE) | _CM(FR_APPLI_START);
-	MPU.interf.queue = &MPU.in_fifo;
-	DPT_register(&MPU.interf);
+        mpu.interf.channel = 9;
+        //mpu.interf.cmde_mask = _CM(SCALP_TWIREAD) | _CM(SCALP_TWIWRITE) | _CM(FR_APPLI_START);
+        mpu.interf.cmde_mask = _CM(SCALP_TWIREAD) | _CM(SCALP_TWIWRITE);
+        mpu.interf.queue = &mpu.in_fifo;
+        scalp_dpt_register(&mpu.interf);
 
-	MPU.started = 0;
+        mpu.started = 0;
 
-	PT_INIT(&MPU.pt);
+        PT_INIT(&mpu.pt);
 }
 
 
-void MPU_run(void)
+void mpu_run(void)
 {
-	(void)PT_SCHEDULE(MPU_thread(&MPU.pt));
+        (void)PT_SCHEDULE(mpu_thread(&mpu.pt));
 }

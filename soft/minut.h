@@ -6,9 +6,9 @@
 // public functions
 //
 
-// the task detecting the take-off and opening the parachute
-extern void MNT_init(void);
+// the task handling the flight phases
+void mnt_init(void);
 
-extern void MNT_run(void);
+void mnt_run(void);
 
 #endif	// __MINUT_H__

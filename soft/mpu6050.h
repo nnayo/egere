@@ -3,8 +3,8 @@
 
 
 // MPU-6050 basic handling
-extern void MPU_init(void);
+void mpu_init(void);
 
-extern void MPU_run(void);
+void mpu_run(void);
 
 #endif	// __MPU6050_H__

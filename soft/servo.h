@@ -3,8 +3,8 @@
 
 
 // servo handling
-extern void SRV_init(void);
+void srv_init(void);
 
-extern void SRV_run(void);
+void srv_run(void);
 
 #endif	// __SERVO_H__

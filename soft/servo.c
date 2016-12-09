@@ -32,7 +32,7 @@ struct {
 	pt_t pt_out;	// pt for sending thread
 	pt_t pt_in;		// pt for receiving thread
 
-	dpt_interface_t interf;	// interface to the dispatcher
+	struct scalp_dpt_interface interf;	// interface to the dispatcher
 
 	struct {
 		s8 open_pos;		// open position
@@ -45,17 +45,17 @@ struct {
 	} aero;
 
 	// incoming frames fifo
-	fifo_t in;
-	frame_t in_buf[IN_FIFO_SIZE];
+	struct nnk_fifo in;
+	struct scalp in_buf[IN_FIFO_SIZE];
 
 	// outgoing frames fifo
-	fifo_t out;
-	frame_t out_buf[OUT_FIFO_SIZE];
+	struct nnk_fifo out;
+	struct scalp out_buf[OUT_FIFO_SIZE];
 
-	frame_t out_fr;	// frame for the sending thread
-	frame_t in_fr;	// frame for the cmde thread
+	struct scalp out_fr;	// frame for the sending thread
+	struct scalp in_fr;	// frame for the cmde thread
 
-} SRV;
+} srv;
 
 
 // ------------------------------------------
@@ -63,7 +63,7 @@ struct {
 //
 
 // activate the cone servo to drive it to the given position
-static void SRV_cone_on(s8 position)
+static void srv_cone_on(s8 position)
 {
 	// compute the compare value according to the required position and the prescaler
 	// for position = -90 degrees, signal up time shall be 1 ms so compare = 2000
@@ -77,7 +77,7 @@ static void SRV_cone_on(s8 position)
 
 
 // deactivate the cone servo to save power
-static void SRV_cone_off(void)
+static void srv_cone_off(void)
 {
 	// setting the compare value to 0, ensure output pin is driven lo
 	TMR1_compare_set(TMR1_A, 0);
@@ -85,7 +85,7 @@ static void SRV_cone_off(void)
 
 
 // activate the aero servo to drive it to the given position
-static void SRV_aero_on(s8 position)
+static void srv_aero_on(s8 position)
 {
 	// compute the compare value according to the required position and the prescaler
 	// for position = -90 degrees, signal up time shall be 1 ms so compare = 2000
@@ -99,28 +99,28 @@ static void SRV_aero_on(s8 position)
 
 
 // deactivate the aero servo to save power
-static void SRV_aero_off(void)
+static void srv_aero_off(void)
 {
 	// setting the compare value to 0, ensure output pin is driven lo
 	TMR1_compare_set(TMR1_B, 0);
 }
 
 
-static void SRV_drive(u8 servo, u8 sense)
+static void srv_drive(u8 servo, u8 sense)
 {
 	switch (servo) {
-	case FR_SERVO_CONE:
+	case SCALP_SERV_CONE:
 		switch (sense) {
-		case FR_SERVO_OPEN:		// open
-			SRV_cone_on(SRV.cone.open_pos);
+		case SCALP_SERV_OPEN:		// open
+			srv_cone_on(srv.cone.open_pos);
 			break;
 
-		case FR_SERVO_CLOSE:	// close
-			SRV_cone_on(SRV.cone.close_pos);
+		case SCALP_SERV_CLOSE:	// close
+			srv_cone_on(srv.cone.close_pos);
 			break;
 
-		case FR_SERVO_OFF:
-			SRV_cone_off();
+		case SCALP_SERV_OFF:
+			srv_cone_off();
 			break;
 
 		default:
@@ -128,18 +128,18 @@ static void SRV_drive(u8 servo, u8 sense)
 		}
 		break;
 
-	case FR_SERVO_AERO:
+	case SCALP_SERV_AERO:
 		switch (sense) {
-		case FR_SERVO_OPEN:		// open
-			SRV_aero_on(SRV.aero.open_pos);
+		case SCALP_SERV_OPEN:		// open
+			srv_aero_on(srv.aero.open_pos);
 			break;
 
-		case FR_SERVO_CLOSE:	// close
-			SRV_aero_on(SRV.aero.close_pos);
+		case SCALP_SERV_CLOSE:	// close
+			srv_aero_on(srv.aero.close_pos);
 			break;
 
-		case FR_SERVO_OFF:
-			SRV_aero_off();
+		case SCALP_SERV_OFF:
+			srv_aero_off();
 			break;
 
 		default:
@@ -153,15 +153,15 @@ static void SRV_drive(u8 servo, u8 sense)
 }
 
 
-static void SRV_cone_save(frame_t* fr)
+static void srv_cone_save(struct scalp* fr)
 {
 	switch ( fr->argv[2] ) {
-	case FR_SERVO_OPEN:		// open position
-		SRV.cone.open_pos = fr->argv[3];
+	case SCALP_SERV_OPEN:		// open position
+		srv.cone.open_pos = fr->argv[3];
 		break;
 
-	case FR_SERVO_CLOSE:	// closed position
-		SRV.cone.close_pos = fr->argv[3];
+	case SCALP_SERV_CLOSE:	// closed position
+		srv.cone.close_pos = fr->argv[3];
 		break;
 
 	default:
@@ -172,15 +172,15 @@ static void SRV_cone_save(frame_t* fr)
 }
 
 
-static void SRV_cone_read(frame_t* fr)
+static void srv_cone_read(struct scalp* fr)
 {
 	switch ( fr->argv[2] ) {
-	case FR_SERVO_OPEN:		// open position
-		fr->argv[3] = SRV.cone.open_pos;
+	case SCALP_SERV_OPEN:		// open position
+		fr->argv[3] = srv.cone.open_pos;
 		break;
 
-	case FR_SERVO_CLOSE:	// closed position
-		fr->argv[3] = SRV.cone.close_pos;
+	case SCALP_SERV_CLOSE:	// closed position
+		fr->argv[3] = srv.cone.close_pos;
 		break;
 
 	default:
@@ -190,15 +190,15 @@ static void SRV_cone_read(frame_t* fr)
 }
 
 
-static void SRV_aero_save(frame_t* fr)
+static void srv_aero_save(struct scalp* fr)
 {
 	switch ( fr->argv[2] ) {
-	case FR_SERVO_OPEN:		// open position
-		SRV.aero.open_pos = fr->argv[3];
+	case SCALP_SERV_OPEN:		// open position
+		srv.aero.open_pos = fr->argv[3];
 		break;
 
-	case FR_SERVO_CLOSE:	// closed position
-		SRV.aero.close_pos = fr->argv[3];
+	case SCALP_SERV_CLOSE:	// closed position
+		srv.aero.close_pos = fr->argv[3];
 		break;
 
 	default:
@@ -209,15 +209,15 @@ static void SRV_aero_save(frame_t* fr)
 }
 
 
-static void SRV_aero_read(frame_t* fr)
+static void srv_aero_read(struct scalp* fr)
 {
 	switch ( fr->argv[2] ) {
-	case FR_SERVO_OPEN:		// open position
-		fr->argv[3] = SRV.aero.open_pos;
+	case SCALP_SERV_OPEN:		// open position
+		fr->argv[3] = srv.aero.open_pos;
 		break;
 
-	case FR_SERVO_CLOSE:	// closed position
-		fr->argv[3] = SRV.aero.close_pos;
+	case SCALP_SERV_CLOSE:	// closed position
+		fr->argv[3] = srv.aero.close_pos;
 		break;
 
 	default:
@@ -227,17 +227,17 @@ static void SRV_aero_read(frame_t* fr)
 }
 
 
-static void SRV_position(frame_t* fr)
+static void srv_position(struct scalp* fr)
 {
 	switch ( fr->argv[0] ) {
-	case FR_SERVO_CONE:
+	case SCALP_SERV_CONE:
 		switch ( fr->argv[1] ) {
-		case FR_SERVO_SAVE:	// save
-			SRV_cone_save(fr);
+		case SCALP_SERV_SAVE:	// save
+			srv_cone_save(fr);
 			break;
 
-		case FR_SERVO_READ:	// read
-			SRV_cone_read(fr);
+		case SCALP_SERV_READ:	// read
+			srv_cone_read(fr);
 			break;
 
 		default:
@@ -247,14 +247,14 @@ static void SRV_position(frame_t* fr)
 		}
 		break;
 
-	case FR_SERVO_AERO:
+	case SCALP_SERV_AERO:
 		switch ( fr->argv[1] ) {
-		case FR_SERVO_SAVE:	// save
-			SRV_aero_save(fr);
+		case SCALP_SERV_SAVE:	// save
+			srv_aero_save(fr);
 			break;
 
-		case FR_SERVO_READ:	// read
-			SRV_aero_read(fr);
+		case SCALP_SERV_READ:	// read
+			srv_aero_read(fr);
 			break;
 
 		default:
@@ -272,51 +272,51 @@ static void SRV_position(frame_t* fr)
 }
 
 
-static PT_THREAD( SRV_in(pt_t* pt) )
+static PT_THREAD( srv_in(pt_t* pt) )
 {
 	u8 swap;
 
 	PT_BEGIN(pt);
 
 	// if no incoming frame is available
-	PT_WAIT_UNTIL(pt, OK == FIFO_get(&SRV.in, &SRV.in_fr) );
+	PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&srv.in, &srv.in_fr) );
 
 	// if it is a response
-	if (SRV.in_fr.resp) {
+	if (srv.in_fr.resp) {
 		// ignore it
 
 		// release the dispatcher
-		DPT_unlock(&SRV.interf);
+		scalp_dpt_unlock(&srv.interf);
 
 		// and restart waiting
 		PT_RESTART(pt);
 	}
 
-	SRV.in_fr.error = 0;
+	srv.in_fr.error = 0;
 
-	switch (SRV.in_fr.cmde) {
-		case FR_MINUT_SERVO_CMD:
+	switch (srv.in_fr.cmde) {
+		case SCALP_SERVOCMD:
 			// drive the servo
-			SRV_drive(SRV.in_fr.argv[0], SRV.in_fr.argv[1]);
+			srv_drive(srv.in_fr.argv[0], srv.in_fr.argv[1]);
 			break;
 
-		case FR_MINUT_SERVO_INFO:
-			SRV_position(&SRV.in_fr);
+		case SCALP_SERVOINFO:
+			srv_position(&srv.in_fr);
 			break;
 
 		default:
 			// shall never happen
-			SRV.in_fr.error = 1;
+			srv.in_fr.error = 1;
 			break;
 	}
 
 	// send the response
-	swap = SRV.in_fr.orig;
-	SRV.in_fr.orig = SRV.in_fr.dest;
-	SRV.in_fr.dest = swap;
-	SRV.in_fr.resp = 1;
-	//SRV.in_fr.nat = 0;
-	PT_WAIT_UNTIL(pt, OK == FIFO_put(&SRV.out, &SRV.in_fr));
+	swap = srv.in_fr.orig;
+	srv.in_fr.orig = srv.in_fr.dest;
+	srv.in_fr.dest = swap;
+	srv.in_fr.resp = 1;
+	//srv.in_fr.nat = 0;
+	PT_WAIT_UNTIL(pt, OK == nnk_fifo_put(&srv.out, &srv.in_fr));
 
 	// and restart waiting for incoming command
 	PT_RESTART(pt);
@@ -325,21 +325,21 @@ static PT_THREAD( SRV_in(pt_t* pt) )
 }
 
 
-static PT_THREAD( SRV_out(pt_t* pt) )
+static PT_THREAD( srv_out(pt_t* pt) )
 {
 	PT_BEGIN(pt);
 
 	// wait until a frame to send is available
-	PT_WAIT_UNTIL(pt, OK == FIFO_get(&SRV.out, &SRV.out_fr));
+	PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&srv.out, &srv.out_fr));
 
 	// send it throught the dispatcher
-	DPT_lock(&SRV.interf);
+	scalp_dpt_lock(&srv.interf);
 
 	// some retry may be necessary
-	PT_WAIT_UNTIL(pt, OK == DPT_tx(&SRV.interf, &SRV.out_fr));
+	PT_WAIT_UNTIL(pt, OK == scalp_dpt_tx(&srv.interf, &srv.out_fr));
 
 	// release the dispatcher
-	DPT_unlock(&SRV.interf);
+	scalp_dpt_unlock(&srv.interf);
 
 	// loop back at start
 	PT_RESTART(pt);
@@ -352,19 +352,19 @@ static PT_THREAD( SRV_out(pt_t* pt) )
 // public functions
 //
 
-void SRV_init(void)
+void srv_init(void)
 {
 	// init
-	FIFO_init(&SRV.in, &SRV.in_buf, IN_FIFO_SIZE, sizeof(frame_t));
-	FIFO_init(&SRV.out, &SRV.out_buf, OUT_FIFO_SIZE, sizeof(frame_t));
+	nnk_fifo_init(&srv.in, &srv.in_buf, IN_FIFO_SIZE, sizeof(struct scalp));
+	nnk_fifo_init(&srv.out, &srv.out_buf, OUT_FIFO_SIZE, sizeof(struct scalp));
 
-	SRV.interf.channel = 10;
-	SRV.interf.cmde_mask = _CM(FR_MINUT_SERVO_CMD) | _CM(FR_MINUT_SERVO_INFO);
-	SRV.interf.queue = &SRV.in;
-	DPT_register(&SRV.interf);
+	srv.interf.channel = 10;
+	srv.interf.cmde_mask = _CM(SCALP_SERVOCMD) | _CM(SCALP_SERVOINFO);
+	srv.interf.queue = &srv.in;
+	scalp_dpt_register(&srv.interf);
 
-	PT_INIT(&SRV.pt_in);
-	PT_INIT(&SRV.pt_out);
+	PT_INIT(&srv.pt_in);
+	PT_INIT(&srv.pt_out);
 
 	// configure port
 	SERVO_DDR |= SERVO_CONE;
@@ -380,11 +380,11 @@ void SRV_init(void)
 }
 
 
-void SRV_run(void)
+void srv_run(void)
 {
 	// if incoming command available
-	(void)PT_SCHEDULE(SRV_in(&SRV.pt_in));
+	(void)PT_SCHEDULE(srv_in(&srv.pt_in));
 
 	// if outgoing frame to send
-	(void)PT_SCHEDULE(SRV_out(&SRV.pt_out));
+	(void)PT_SCHEDULE(srv_out(&srv.pt_out));
 }
