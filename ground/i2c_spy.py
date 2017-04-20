@@ -10,7 +10,7 @@ IO connection:
 """
 
 import pyBusPirateLite.I2C as bp
-import frame
+
 
 import sys
 
@@ -89,6 +89,8 @@ def spy_raw(spy):
 
 
 def spy_with_decode(spy):
+    import frame
+
     """display decoded I2C frames"""
     fr = frame.Frame()
     dc = fr.get_derived_class()
