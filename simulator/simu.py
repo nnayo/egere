@@ -27,7 +27,7 @@ class Accel(object):
         print('noise = %5.2f, bias = %5.2f' % (noise, bias))
 
         # column indexes
-        self.indexes =  {
+        self.indexes = {
             'temps': None,
             'beta': None,
             'poussée': None,
@@ -58,6 +58,8 @@ class Accel(object):
 
         random.seed(1)
 
+        self._iteration_step = 0
+
     def _indexes_lookup(self, row):
         """extract indexes from row"""
         for i in range(len(row)):
@@ -85,8 +87,8 @@ class Accel(object):
         # check for takeoff time
         if 'Sortie de rampe' in row:
             conv = row[self.indexes['temps']].replace(',', '.')
-            self.takeoff_time = float(conv)
-            print('takeoff time = %2.1f s' % self.takeoff_time)
+            takeoff_time = float(conv)
+            print('takeoff time = %2.1f s' % takeoff_time)
 
         # check for apogee time
         if 'Apogée' in row:
@@ -112,7 +114,7 @@ class Accel(object):
         # respecting the sampling rate
         # and adding samples before 0 s
         data = zip(self.data['poussée'], self.data['trainée'],
-                    self.data['poids'], self.data['rampe'], self.data['beta'])
+                   self.data['poids'], self.data['rampe'], self.data['beta'])
         for thrust, drag, weight, pad, angle in data:
             acc_long = thrust - drag - weight * math.sin(angle)
             acc_lat = pad - weight * math.cos(angle)
@@ -168,7 +170,7 @@ class Accel(object):
             'acc lat': self._computed_data['acc lat'][i],
         }
 
-        # add noise 
+        # add noise
         noise = random.uniform(1. - self._noise, 1 + self._noise)
         res['acc long'] = (res['acc long'] + self._bias) + noise
         noise = random.uniform(1. - self._noise, 1 + self._noise)
@@ -189,7 +191,6 @@ class Algo(object):
         self._averaging = averaging
 
         self._state = self._state_on_pad
-        self._lat_triggered = False
         self._avr = {
             'acc long': [],
             'acc lat': [],
@@ -200,10 +201,10 @@ class Algo(object):
     def _state_on_pad(self, acc_long, acc_lat):
         """rocket is waiting on pad"""
         if acc_long > self.thresholds['takeoff']:
-            self._state = self._state_takeoff
+            self._state = self._state_thrusting
             return ' --> takeoff'
 
-    def _state_takeoff(self, acc_long, acc_lat):
+    def _state_thrusting(self, acc_long, acc_lat):
         """rocket has taken off"""
         if acc_long < 0:
             self._state = self._state_balistic_up
@@ -211,9 +212,9 @@ class Algo(object):
 
     def _state_balistic_up(self, acc_long, acc_lat):
         """rocket is climbing up"""
-        if self._lat_triggered:
+        if acc_lat > self.thresholds['apogee']:
             self._state = self._state_parachute
-            return ' --> parachute'
+            return ' --> parachute while up'
 
         if acc_long > 0:
             self._state = self._state_balistic_down
@@ -221,9 +222,9 @@ class Algo(object):
 
     def _state_balistic_down(self, acc_long, acc_lat):
         """rocket is falling down"""
-        if self._lat_triggered:
-            self.state = self._state_parachute
-            return ' --> parachute'
+        if acc_lat > self.thresholds['apogee']:
+            self._state = self._state_parachute
+            return ' --> parachute while down'
 
     def _state_parachute(self, acc_long, acc_lat):
         """rocket is under parchute"""
@@ -259,14 +260,8 @@ class Algo(object):
 
         event = ''
 
-        if avr_acc_lat > self.thresholds['apogee']:
-            self._lat_triggered = True
-            event = ' --> acc lat triggered'
-        else:
-            self._lat_triggered = False
-
         state_event = self._state(avr_acc_long, avr_acc_lat)
-        if state_event == None:
+        if state_event is None:
             state_event = ''
         event += state_event
 
@@ -277,7 +272,7 @@ class Algo(object):
                     acc_lat,
                     event
                 )
-            )
+             )
 
 
 def main():

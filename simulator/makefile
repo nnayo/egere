@@ -1,25 +1,32 @@
+CC = gcc
 
-CFLAGS = -g -I$(TROLL_PROJECTS)/simavr/simavr/sim -I. -std=c99 -Wall -Wextra
-LDFLAGS = $(TROLL_PROJECTS)/simavr/libsimavr.a -lelf
+CFLAGS = \
+	 -g \
+	 -std=c99 \
+	 -Wall \
+	 -Wextra \
+	 -Werror \
+	 -fPIC \
+	 -I. \
+	 -I$(TROLL_PROJECTS)/simavr/simavr/sim
+
+LDFLAGS = \
+	  -shared \
+	  $(TROLL_PROJECTS)/simavr/libsimavr.a \
+	  -lelf \
+	  -lm
 
 
-all:	sim_egere minut.elf
+all: mpu6050.so
 
+debug: mpu6050.so
+	gdb ../../simavr/simavr/run_avr
 
-
-sim_egere: sim_egere.o mpu6050.o sc18is600.o $(TROLL_PROJECTS)/simavr/libsimavr.a
-	$(CC) sim_egere.o mpu6050.o sc18is600.o $(LDFLAGS) -o sim_egere
-
-sim_egere.o: sim_egere.c
-	$(CC) $(CFLAGS) -c sim_egere.c -o sim_egere.o
+mpu6050.so: mpu6050.o
+	$(CC) mpu6050.o $(LDFLAGS) -o mpu6050.so
 
 mpu6050.o: mpu6050.c mpu6050.h sc18is600.h
-sc18is600.o: sc18is600.c sc18is600.h
-
-
-minut.elf:
-	ln -s ../soft/minut.elf minut.elf
 
 
 clean:
-	rm -f sim_egere *.o *.elf *.vcd *~ *.lix
+	rm -f mpu6050.so *.o *.elf *.vcd *~ *.lix
