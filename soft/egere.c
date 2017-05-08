@@ -10,6 +10,7 @@
 #include "basic.h"
 #include "common.h"
 #include "cpu.h"
+#include "log.h"
 
 #include "avr/io.h"
 #include "avr/interrupt.h"
@@ -18,10 +19,9 @@
 arduino atmega  function
 -------+-------+--------
 
-D8      PB0     SS/
-mosi    PB3     mosi
-miso    PB4     miso
-sck     PB5     sck
+sck     PB5     led alive (green)
+D6      PD6     led signal (blue)
+D7      PD7     led error (red)
 
 D9      PB1     servo cone
 D10     PB2     servo aero
@@ -100,13 +100,13 @@ ctrl            ctrl servo aero (servo)
 ctrl            ctrl servo cone (arduino)
 ctrl            ctrl servo cone (servo)
 
-led alive       signal in (arduino)
-led take-off    signal in (arduino)
+led signal      signal in (arduino)
+led error       signal in (arduino)
 
 #endif
 
 
-#if 0
+#if 1
 // ------------------------------------------
 // simavr options
 //
@@ -115,12 +115,13 @@ led take-off    signal in (arduino)
 
 AVR_MCU(16000000, "atmega328p");
 
-const struct avr_mmcu_vcd_trace_t simavr_conf[]  _MMCU_ = {
+const struct avr_mmcu_vcd_trace_t register_monitoring[]  _MMCU_ = {
         { AVR_MCU_VCD_SYMBOL("servo_cone"), .mask = _BV(PORTB1), .what = (void*)&PORTB, },
         { AVR_MCU_VCD_SYMBOL("servo_aero"), .mask = _BV(PORTB2), .what = (void*)&PORTB, },
         { AVR_MCU_VCD_SYMBOL("led_alive"), .mask = _BV(PORTB5), .what = (void*)&PORTB, },
-        { AVR_MCU_VCD_SYMBOL("led_open"), .mask = _BV(PORTB4), .what = (void*)&PORTB, },
-        { AVR_MCU_VCD_SYMBOL("cone_open_switch"), .mask = _BV(PORTB3), .what = (void*)&PINB, },
+        { AVR_MCU_VCD_SYMBOL("led_signal"), .mask = _BV(PORTD6), .what = (void*)&PORTD, },
+        { AVR_MCU_VCD_SYMBOL("led_error"), .mask = _BV(PORTD7), .what = (void*)&PORTD, },
+        { AVR_MCU_VCD_SYMBOL("sepa_switch"), .mask = _BV(PORTB3), .what = (void*)&PINB, },
 
         { AVR_MCU_VCD_SYMBOL("TWDR"), .what = (void*)&TWDR, },
 
@@ -220,7 +221,7 @@ int main(void)
         nnk_time_incr_set(10 * TIME_1_MSEC);
 
         // program and start timer2 for interrupt on compare every 10 ms
-        nnk_tmr2_init(TMR2_WITH_COMPARE_INT, TMR2_PRESCALER_1024, TMR2_WGM_CTC, TIMER2_TOP_VALUE, time, NULL);
+        nnk_tmr2_init(NNK_TMR2_WITH_COMPARE_INT, NNK_TMR2_PRESCALER_1024, NNK_TMR2_WGM_CTC, TIMER2_TOP_VALUE, time, NULL);
         nnk_tmr2_start();
 
         // enable interrupts
@@ -230,7 +231,8 @@ int main(void)
         scalp_dpt_init();
         scalp_bsc_init();
         scalp_cmn_init();
-        scalp_cpu_init();
+        //scalp_cpu_init();
+        scalp_log_init();
 
         mnt_init();
         srv_init();
@@ -241,7 +243,8 @@ int main(void)
                 scalp_dpt_run();
                 scalp_bsc_run();
                 scalp_cmn_run();
-                scalp_cpu_run();
+                //scalp_cpu_run();
+                scalp_log_run();
 
                 mnt_run();
                 srv_run();

@@ -1,0 +1,142 @@
+# specific commands
+cc = avr-gcc
+objcopy = avr-objcopy
+objdump = avr-objdump
+size = avr-size
+avrdude = avrdude -P /dev/ttyACM0 -p atmega328p -c arduino -b 57600 
+simavr = run_avr
+gdb = avr-gdb
+
+
+#specific paths and flags
+troll_projects_dir = /home/yog/TRoll/projects
+nanok_dir = $troll_projects_dir/nanok
+scalp_dir = $troll_projects_dir/scalp
+simavr_dir = $troll_projects_dir/simavr
+
+debug = -g
+#optimize = -Os
+optimize = -Os $
+           -fno-inline-small-functions $
+           -fshort-enums $
+           -funsigned-bitfields
+
+mcu_target = -mmcu=atmega328
+
+includes = -I. $
+           -I$nanok_dir $
+           -I$scalp_dir $
+           -I$simavr_dir/simavr/sim/avr
+
+cflags = $debug $
+         -Wall -Wextra -Werror $
+         -std=c99 $
+         -fdiagnostics-color=always $
+         $optimize $mcu_target $includes
+
+# The weird "-Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000"
+# is used to tell the linker not to discard the .mmcu section,
+# otherwise the --gc-sections will delete it.
+ldflags = -L. $
+          -L$nanok_dir $
+          -L$scalp_dir $
+          $mcu_target $
+	  -fno-inline-small-functions $
+	  -Wl,--undefined=_mmcu,--section-start=.mmcu=0x910000
+
+libs = -lm -lscalp -lnanoK
+
+
+# binary
+rule cc
+  command = $cc -MMD -MT $out -MF $out.d $cflags -c $in -o $out
+  deps = gcc
+  depfile = $out.d
+  description = cc $out
+
+rule link
+  command = $cc $ldflags $in $libs -o $out
+  description = lk $out
+
+rule size
+  command = $size $in
+
+rule lix
+  command = $objdump -Sdx $in > $out
+
+rule load
+  command = $avrdude -U flash:w:$in:e
+
+# EEPROM
+rule eeprom_load
+  command = $avrdude -D -U eeprom:w:$in
+
+rule eeprom_dump
+  command = $avrdude -D -U eeprom:r:$out:s
+  # eeprom dump to file in S-rec format
+
+rule eeprom_gen_c
+  command = PYTHONPATH=$$PYTHONPATH:$scalp_dir ./gen_eeprom.py $out
+
+rule objcopy
+  command = $objcopy --only-section=.eeprom $
+                     --set-section-flags=.eeprom=alloc,load $
+                     --change-section-lma .eeprom=0 $
+                     -O ihex $in $out
+
+
+# debug
+rule debug
+  command = $simavr_dir/simavr/$simavr -s ../simulator/mpu6050.so --gdb -v -v -t -t -t $in
+  pool = console
+
+rule gdb
+  command = $gdb $in
+  pool = console
+
+rule run
+  command = $simavr_dir/simavr/$simavr -s ../simulator/mpu6050.so $in
+  pool = console
+
+# misc
+rule term
+  command = $avrdude -t
+  pool = console
+
+# compilation
+build egere.o: cc egere.c
+build minut.o: cc minut.c
+build servo.o: cc servo.c
+build mpu6050.o: cc mpu6050.c
+
+
+# linking and associated actions
+build minut.elf: link egere.o minut.o servo.o mpu6050.o eeprom.o $
+                 | $nanok_dir/libnanoK.a $scalp_dir/libscalp.a
+build size: size minut.elf
+build minut.elf.lix: lix minut.elf
+build load: load minut.elf
+
+
+# debug
+build debug: debug minut.elf | minut.elf.lix
+build gdb: gdb minut.elf
+build run: run minut.elf
+
+
+# EEPROM content generation, loading and dumping
+build eeprom_gen: phony eeprom.img
+build eeprom.img: objcopy eeprom.o
+build eeprom.o: cc eeprom.c
+build eeprom.c: eeprom_gen_c | minut.py $scalp_dir/scalp.h
+build eeprom_load: eeprom_load eeprom.img
+build eeprom_dump: phony eeprom.dump
+build eeprom.dump: eeprom_dump
+
+
+# terminal connection to board
+build term: term
+
+
+default size minut.elf.lix
+

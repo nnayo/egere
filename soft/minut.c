@@ -12,6 +12,9 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 
+#include <string.h>  // memset()
+
+
 //for debug
 #define static
 
@@ -20,7 +23,7 @@
 // private definitions
 //
 
-#define NB_EVENTS	5
+#define NB_EVENTS	3
 #define NB_CMDS		3
 #define NB_OUT_FR	4
 
@@ -33,6 +36,8 @@
 #define SAMPLING_START		(2 * TIME_1_SEC)
 #define SAMPLING_PERIOD		(100 * TIME_1_MSEC)
 
+#define AVERAGING_NB  4
+
 
 // ------------------------------------------
 // private types
@@ -40,6 +45,7 @@
 
 enum mnt_event {
 	MNT_EV_NONE,
+	MNT_EV_MPU_READY,
 	MNT_EV_SEPA_OPEN,
 	MNT_EV_SEPA_CLOSED,
 	MNT_EV_TIME_OUT,
@@ -47,6 +53,15 @@ enum mnt_event {
 	MNT_EV_BALISTIC_UP,
 	MNT_EV_BALISTIC_DOWN,
 	MNT_EV_LATERAL_ACC_TRIGGER,
+};
+
+
+union acc {
+        s16 acc;
+        struct {
+                u8 lo;
+                u8 hi;
+        };
 };
 
 
@@ -66,14 +81,26 @@ struct {
 
 	u32 time_out;		// time-out target time
 	u32 sampling_rate;	// sampling rate for door changings
-	u32 take_off_time_out;	// take-off scan interval time
-	u32 door_time_out;	// door scan interval time
-	u32 check_time_out;	// state scan interval time
 
-	u8 window_begin_time;	// window begin time [0.0; 25.5] seconds from take-off detection
-	u8 window_end_time;	// window end time [0.0; 25.5] seconds from take-off detection
+        struct {
+                s16 take_off;   // [0.00G:25.5G]
+                struct {
+                        s16 lng;   // [0.00G:25.5G]
+                        s32 lat;   // [0.00GG:2.55GG]
+                } apogee;
+        } thresholds;
 
-	u8 sepa_state;
+	u8 sepa_state;          // separation flag
+
+        struct {
+                s16 lng;
+                s32 lat;
+                struct {
+                        s16 lng[AVERAGING_NB];
+                        s32 lat[AVERAGING_NB];
+                        u8 idx;
+                } average;
+        } acc;
 
 	// events fifo
 	struct nnk_fifo ev_fifo;
@@ -95,18 +122,19 @@ struct {
 //----------------------------------------------------------------------------
 // forward prototypes
 //
-static const struct nnk_stm_transition init_to_lock0;
-static const struct nnk_stm_transition init_to_waiting;
+static const struct nnk_stm_transition init_to_ready;
+static const struct nnk_stm_transition ready_to_lock0;
+static const struct nnk_stm_transition ready_to_waiting;
 static const struct nnk_stm_transition lock0_to_lock1;
 static const struct nnk_stm_transition lock1_to_lock2;
 static const struct nnk_stm_transition lock2_to_waiting;
-static const struct nnk_stm_transition waiting_to_flight;
-static const struct nnk_stm_transition flight_to_balistic;
-static const struct nnk_stm_transition flight_to_window_begin;
-static const struct nnk_stm_transition balistic_to_open_seq;
-static const struct nnk_stm_transition window_begin_to_open_seq_0;
-static const struct nnk_stm_transition window_begin_to_open_seq_1;
-static const struct nnk_stm_transition window_begin_to_open_seq_2;
+static const struct nnk_stm_transition waiting_to_thrusting;
+static const struct nnk_stm_transition thrusting_to_balistic;
+static const struct nnk_stm_transition thrusting_to_detection;
+static const struct nnk_stm_transition balistic_to_detection;
+static const struct nnk_stm_transition detection_to_open_seq_0;
+static const struct nnk_stm_transition detection_to_open_seq_1;
+static const struct nnk_stm_transition detection_to_open_seq_2;
 static const struct nnk_stm_transition open_seq_to_brake;
 static const struct nnk_stm_transition brake_to_unlock;
 static const struct nnk_stm_transition unlock_to_brake;
@@ -114,26 +142,28 @@ static const struct nnk_stm_transition unlock_to_parachute;
 
 
 static const struct nnk_stm_state init;
+static const struct nnk_stm_state ready;
 static const struct nnk_stm_state lock0;
 static const struct nnk_stm_state lock1;
 static const struct nnk_stm_state lock2;
 static const struct nnk_stm_state waiting;
-static const struct nnk_stm_state flight;
+static const struct nnk_stm_state thrusting;
 static const struct nnk_stm_state balistic;
-static const struct nnk_stm_state window_begin;
+static const struct nnk_stm_state detection;
 static const struct nnk_stm_state open_seq;
 static const struct nnk_stm_state brake;
 static const struct nnk_stm_state unlock;
 static const struct nnk_stm_state parachute;
 
 static u8 action_init(pt_t* pt, void* args);
+static u8 action_ready(pt_t* pt, void* args);
 static u8 action_lock0(pt_t* pt, void* args);
 static u8 action_lock1(pt_t* pt, void* args);
 static u8 action_lock2(pt_t* pt, void* args);
 static u8 action_waiting(pt_t* pt, void* args);
-static u8 action_flight(pt_t* pt, void* args);
+static u8 action_thrusting(pt_t* pt, void* args);
 static u8 action_balistic(pt_t* pt, void* args);
-static u8 action_window_begin(pt_t* pt, void* args);
+static u8 action_detection(pt_t* pt, void* args);
 static u8 action_open_seq(pt_t* pt, void* args);
 static u8 action_brake(pt_t* pt, void* args);
 static u8 action_unlock(pt_t* pt, void* args);
@@ -143,13 +173,19 @@ static u8 action_parachute(pt_t* pt, void* args);
 //----------------------------------------------------------------------------
 // transitions
 //
-static const struct nnk_stm_transition init_to_lock0 = {
-    .ev = MNT_EV_SEPA_OPEN,
-    .st = &lock0,
-    .tr = &init_to_waiting,
+static const struct nnk_stm_transition init_to_ready = {
+    .ev = MNT_EV_MPU_READY,
+    .st = &ready,
+    .tr = &init_to_ready,
 };
 
-static const struct nnk_stm_transition init_to_waiting = {
+static const struct nnk_stm_transition ready_to_lock0 = {
+    .ev = MNT_EV_SEPA_OPEN,
+    .st = &lock0,
+    .tr = &ready_to_waiting,
+};
+
+static const struct nnk_stm_transition ready_to_waiting = {
     .ev = MNT_EV_SEPA_CLOSED,
     .st = &waiting,
     .tr = NULL,
@@ -173,43 +209,43 @@ static const struct nnk_stm_transition lock2_to_waiting = {
     .tr = NULL,
 };
 
-static const struct nnk_stm_transition waiting_to_flight = {
+static const struct nnk_stm_transition waiting_to_thrusting = {
     .ev = MNT_EV_TAKE_OFF,
-    .st = &flight,
+    .st = &thrusting,
     .tr = NULL,
 };
 
-static const struct nnk_stm_transition flight_to_balistic = {
+static const struct nnk_stm_transition thrusting_to_balistic = {
     .ev = MNT_EV_BALISTIC_UP,
     .st = &balistic,
-    .tr = &flight_to_window_begin,
+    .tr = &thrusting_to_detection,
 };
 
-static const struct nnk_stm_transition flight_to_window_begin = {
+static const struct nnk_stm_transition thrusting_to_detection = {
     .ev = MNT_EV_TIME_OUT,
-    .st = &window_begin,
+    .st = &detection,
     .tr = NULL,
 };
 
-static const struct nnk_stm_transition balistic_to_open_seq = {
+static const struct nnk_stm_transition balistic_to_detection = {
     .ev = MNT_EV_TIME_OUT,
-    .st = &open_seq,
+    .st = &detection,
     .tr = NULL,
 };
 
-static const struct nnk_stm_transition window_begin_to_open_seq_0 = {
+static const struct nnk_stm_transition detection_to_open_seq_0 = {
     .ev = MNT_EV_TIME_OUT,
     .st = &open_seq,
-    .tr = &window_begin_to_open_seq_1,
+    .tr = &detection_to_open_seq_1,
 };
 
-static const struct nnk_stm_transition window_begin_to_open_seq_1 = {
+static const struct nnk_stm_transition detection_to_open_seq_1 = {
     .ev = MNT_EV_BALISTIC_DOWN,
     .st = &open_seq,
-    .tr = &window_begin_to_open_seq_2,
+    .tr = &detection_to_open_seq_2,
 };
 
-static const struct nnk_stm_transition window_begin_to_open_seq_2 = {
+static const struct nnk_stm_transition detection_to_open_seq_2 = {
     .ev = MNT_EV_LATERAL_ACC_TRIGGER,
     .st = &open_seq,
     .tr = NULL,
@@ -245,7 +281,12 @@ static const struct nnk_stm_transition unlock_to_parachute = {
 //
 static const struct nnk_stm_state init = {
 	.action = action_init,
-	.tr = &init_to_lock0,
+	.tr = &init_to_ready,
+};
+
+static const struct nnk_stm_state ready = {
+	.action = action_ready,
+	.tr = &ready_to_lock0,
 };
 
 static const struct nnk_stm_state lock0 = {
@@ -265,23 +306,23 @@ static const struct nnk_stm_state lock2 = {
 
 static const struct nnk_stm_state waiting = {
 	.action = action_waiting,
-	.tr = &waiting_to_flight,
+	.tr = &waiting_to_thrusting,
 };
 
 
-static const struct nnk_stm_state flight = {
-	.action = action_flight,
-	.tr = &flight_to_balistic,
+static const struct nnk_stm_state thrusting = {
+	.action = action_thrusting,
+	.tr = &thrusting_to_balistic,
 };
 
 static const struct nnk_stm_state balistic = {
 	.action = action_balistic,
-	.tr = &balistic_to_open_seq,
+	.tr = &balistic_to_detection,
 };
 
-static const struct nnk_stm_state window_begin = {
-	.action = action_window_begin,
-	.tr = &window_begin_to_open_seq_0,
+static const struct nnk_stm_state detection = {
+	.action = action_detection,
+	.tr = &detection_to_open_seq_0,
 };
 
 static const struct nnk_stm_state open_seq = {
@@ -309,33 +350,51 @@ static const struct nnk_stm_state parachute = {
 // private functions
 //
 
+static u8 mnt_signal_event(enum mnt_event ev)
+{
+        struct scalp sclp;
+
+        return scalp_set_1(&sclp, SCALP_DPT_BROADCAST_ADDR, SCALP_DPT_SELF_ADDR, SCALP_MINUTEVENT, ev)
+                && nnk_fifo_put(&mnt.out_fifo, &sclp);
+}
+
+
+static u8 action_container_send(u8 cont_idx)
+{
+	struct scalp fr;
+
+        // build the container
+	scalp_set_4(&fr, SCALP_DPT_SELF_ADDR, SCALP_DPT_SELF_ADDR, SCALP_CONTAINER,
+                        0, 0, cont_idx, SCALP_CONT_PRE_DEF_STORAGE);
+
+        // try to queue it
+        return nnk_fifo_put(&mnt.out_fifo, &fr);
+}
+
+
 static u8 action_init(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
+	PT_BEGIN(pt);
+
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(1));
+
+	PT_YIELD_WHILE(pt, OK);
+
+	PT_END(pt);
+}
+
+
+static u8 action_ready(pt_t* pt, void* args)
+{
+        (void)args;
 
 	PT_BEGIN(pt);
 
-	// signal init state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_INIT)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde cone stop
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_CONE, SCALP_SERV_OFF)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde aero stop
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_AERO, SCALP_SERV_OFF)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led alive 0.5/2.0s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_ALIVE, SCALP_LED_SET, 50, 200)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(2));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -347,34 +406,10 @@ static u8 action_lock0(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal lock0 state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_LOCK0)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde cone open
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_CONE, SCALP_SERV_OPEN)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde aero open
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_AERO, SCALP_SERV_OPEN)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led alive 0.0/1.0s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_ALIVE, SCALP_LED_SET, 0, 100)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led signal 0.1/0.1s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_ALIVE, SCALP_LED_SET, 10, 10)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(3));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -385,32 +420,10 @@ static u8 action_lock1(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal lock1 state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_LOCK1)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde aero close
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_AERO, SCALP_SERV_CLOSE)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led alive 1.0/0.0s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_ALIVE, SCALP_LED_SET, 100, 0)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led signal 0.0/1.0s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_ALIVE, SCALP_LED_SET, 0, 100)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// time-out 5s
-	mnt.time_out = nnk_time_get() + 5 * TIME_1_SEC;
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(4));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -421,27 +434,10 @@ static u8 action_lock2(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal lock2 state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_LOCK2)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde cone close
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_CONE, SCALP_SERV_CLOSE)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led signal 1.0/0.0s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_ALIVE, SCALP_LED_SET, 100, 0)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// time-out 1s
-	mnt.time_out = nnk_time_get() + 1 * TIME_1_SEC;
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(5));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -453,29 +449,17 @@ static u8 action_waiting(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal waiting state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_WAITING)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(6));
 
-	// cmde cone stop
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_CONE, SCALP_SERV_OFF)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+        // wait take-off
+	PT_YIELD_WHILE(pt, mnt.acc.lng < mnt.thresholds.take_off);
 
-	// cmde aero stop
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_AERO, SCALP_SERV_OFF)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led alive 0.4/2.0s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_ALIVE, SCALP_LED_SET, 40, 200)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+        // signal take-off to other components and to self
+        // this will generate the event and thus the transition
+        PT_WAIT_UNTIL(pt, mnt_signal_event(SCALP_MINU_EV_TAKE_OFF));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -483,26 +467,20 @@ static u8 action_waiting(pt_t* pt, void* args)
 }
 
 
-static u8 action_flight(pt_t* pt, void* args)
+static u8 action_thrusting(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal flight state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_FLIGHT)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(7));
 
-	// led signal 0.1/0.1s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_SIGNAL, SCALP_LED_SET, 10, 10)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+        // wait end of thrust
+	PT_YIELD_WHILE(pt, mnt.acc.lng > 0);
 
-	// time-out = window begin
-	mnt.time_out = mnt.window_begin_time * TIME_1_SEC / 10 + nnk_time_get();
+        // signal balistic up
+        PT_WAIT_UNTIL(pt, mnt_signal_event(SCALP_MINU_EV_BALISTIC_UP));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -514,35 +492,36 @@ static u8 action_balistic(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal balistic state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_BALISTIC)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(8));
 
 	PT_YIELD_WHILE(pt, OK);
 
 	PT_END(pt);
 }
 
-static u8 action_window_begin(pt_t* pt, void* args)
+static u8 action_detection(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal balistic state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_WINDOW_BEGIN)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(9));
 
-	// time-out = window end
-	mnt.time_out = mnt.window_end_time * TIME_1_SEC / 10 + nnk_time_get();
+        // wait falling down detection or apogee
+	PT_YIELD_UNTIL(pt, mnt.acc.lng > mnt.thresholds.apogee.lng
+                        || mnt.acc.lat > mnt.thresholds.apogee.lat);
+
+        // signal balistic down
+        if (mnt.acc.lng > mnt.thresholds.apogee.lng)
+                PT_WAIT_UNTIL(pt, mnt_signal_event(SCALP_MINU_EV_BALISTIC_DOWN));
+
+        // signal lateral acceleration trigger
+        if (mnt.acc.lat > mnt.thresholds.apogee.lat)
+                PT_WAIT_UNTIL(pt, mnt_signal_event(SCALP_MINU_EV_LAT_ACC_TRIG));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -554,32 +533,10 @@ static u8 action_open_seq(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal open seq state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_OPEN_SEQ)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde cone open
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_CONE, SCALP_SERV_OPEN)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde aero stop
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_AERO, SCALP_SERV_OFF)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led alive 0.1/0.1s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_ALIVE, SCALP_LED_SET, 10, 10)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// time-out 0.2s
-	mnt.time_out = nnk_time_get() + 200 * TIME_1_MSEC;
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(10));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -591,27 +548,10 @@ static u8 action_brake(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal brake state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_BRAKE)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde cone stop
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_CONE, SCALP_SERV_OFF)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde aero open
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_AERO, SCALP_SERV_OPEN)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// time-out 0.2s
-	mnt.time_out = nnk_time_get() + 200 * TIME_1_MSEC;
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(11));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -623,27 +563,10 @@ static u8 action_unlock(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal unlock state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_UNLOCK)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde cone open
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_CONE, SCALP_SERV_OPEN)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde aero stop
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_AERO, SCALP_SERV_OFF)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// time-out 0.2s
-	mnt.time_out = nnk_time_get() + 200 * TIME_1_MSEC;
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(12));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -655,34 +578,10 @@ static u8 action_parachute(pt_t* pt, void* args)
 {
         (void)args;
 
-	struct scalp fr;
-
 	PT_BEGIN(pt);
 
-	// signal parachute state
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_STATE, 0, SCALP_STAT_SET, SCALP_STAT_PARACHUTE)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde cone stop
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_CONE, SCALP_SERV_OFF)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// cmde aero stop
-	PT_WAIT_UNTIL(pt, scalp_set_2(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_SERVOCMD, 0, SCALP_SERV_AERO, SCALP_SERV_OFF)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led alive 1.0/2.5s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_ALIVE, SCALP_LED_SET, 100, 250)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
-
-	// led signal 1.0/2.5s
-	PT_WAIT_UNTIL(pt, scalp_set_4(&fr, DPT_SELF_ADDR, DPT_SELF_ADDR, SCALP_LED, 0, SCALP_LED_SIGNAL, SCALP_LED_SET, 100, 250)
-			&& OK == nnk_fifo_put(&mnt.out_fifo, &fr)
-	);
+	// execute PRE_DEF container scalp
+	PT_WAIT_UNTIL(pt, action_container_send(13));
 
 	PT_YIELD_WHILE(pt, OK);
 
@@ -693,8 +592,6 @@ static u8 action_parachute(pt_t* pt, void* args)
 // check separation changings
 static PT_THREAD( mnt_check_sepa(pt_t* pt) )
 {
-	enum mnt_event ev;
-
 	PT_BEGIN(pt);
 
 	// if current time is higher than the time-out target time
@@ -717,11 +614,11 @@ static PT_THREAD( mnt_check_sepa(pt_t* pt) )
 	// else generate the correspondig change event
 	switch (mnt.sepa_state) {
         case SEPA_STATE_OPEN:
-                PT_WAIT_UNTIL(pt, (ev = MNT_EV_SEPA_OPEN) && OK == nnk_fifo_put(&mnt.ev_fifo, &ev) );
+                PT_WAIT_UNTIL(pt, mnt_signal_event(SCALP_MINU_EV_SEPA_OPEN));
                 break;
 
         case SEPA_STATE_CLOSED:
-                PT_WAIT_UNTIL(pt, (ev = MNT_EV_SEPA_CLOSED) && OK == nnk_fifo_put(&mnt.ev_fifo, &ev) );
+                PT_WAIT_UNTIL(pt, mnt_signal_event(SCALP_MINU_EV_SEPA_CLOSED));
                 break;
 
         default:
@@ -737,8 +634,6 @@ static PT_THREAD( mnt_check_sepa(pt_t* pt) )
 // check a time-out has elapsed
 static PT_THREAD( mnt_check_time_out(pt_t* pt) )
 {
-	enum mnt_event ev;
-
 	PT_BEGIN(pt);
 
 	// if current time is higher than the time-out target time
@@ -748,7 +643,7 @@ static PT_THREAD( mnt_check_time_out(pt_t* pt) )
 	mnt.time_out = TIME_MAX;
 
 	// generate the time-out event
-	PT_WAIT_UNTIL(pt, (ev = MNT_EV_TIME_OUT) && OK == nnk_fifo_put(&mnt.ev_fifo, &ev) );
+	PT_WAIT_UNTIL(pt, mnt_signal_event(SCALP_MINU_EV_TIME_OUT));
 
 	PT_RESTART(pt);
 
@@ -756,19 +651,44 @@ static PT_THREAD( mnt_check_time_out(pt_t* pt) )
 }
 
 
+// convert scalp event to state machine event
+static u8 mnt_event(struct scalp* sclp)
+{
+        enum mnt_event ev;
+
+        switch (sclp->argv[0]) {
+        case SCALP_MINU_EV_MPU_READY:
+        case SCALP_MINU_EV_SEPA_OPEN:
+        case SCALP_MINU_EV_SEPA_CLOSED:
+        case SCALP_MINU_EV_TIME_OUT:
+        case SCALP_MINU_EV_TAKE_OFF:
+        case SCALP_MINU_EV_BALISTIC_UP:
+        case SCALP_MINU_EV_BALISTIC_DOWN:
+        case SCALP_MINU_EV_LAT_ACC_TRIG:
+                ev = (enum mnt_event)sclp->argv[0];
+                break;
+
+        default:
+                ev = MNT_EV_NONE;
+                break;
+        }
+
+        return nnk_fifo_put(&mnt.ev_fifo, &ev);
+}
+
+
+// set timeout from scalp
 static void mnt_time_out(struct scalp* fr)
 {
 	switch (fr->argv[0]) {
-        case 0x00:
-                // save new time values
-                mnt.window_begin_time = fr->argv[1];
-                mnt.window_end_time = fr->argv[2];
+        case SCALP_MINU_SET:
+                // set time-out relative to current time
+                mnt.time_out = nnk_time_get() + fr->argv[1] * TIME_1_SEC / 10;
                 break;
 
-        case 0xff:
-                // read open time value
-                fr->argv[1] = mnt.window_begin_time;
-                fr->argv[2] = mnt.window_end_time;
+        case SCALP_MINU_INF:
+                // set time-out to infinite
+                mnt.time_out = TIME_MAX;
                 break;
 
         default:
@@ -779,30 +699,89 @@ static void mnt_time_out(struct scalp* fr)
 }
 
 
+// save configuration thresholds
+static void mnt_threshold(struct scalp* sclp)
+{
+        // TODO : thresholds scaled in respect with the MPU6050 range settings
+        // acceleration are on 16-bit for a range [-16G:16G]
+        // thus the scale factor is 65536 / 32
+        // and the unit in the scalp is 0.1G for long and 0.01G for lat
+        s32 scale;
+
+        scale = (s32)sclp->argv[0];
+        mnt.thresholds.take_off = scale * (65536 / 32) / 10;
+
+        scale = (s32)sclp->argv[1];
+        mnt.thresholds.apogee.lng = scale * (65536 / 32) / 10;
+
+        scale = (s32)sclp->argv[2];
+        mnt.thresholds.apogee.lat = scale * (65536 / 32) * (65536 / 32) / 100;
+}
+
+
+// average the accelerations
+static void mnt_acc_compute(struct scalp* sclp)
+{
+        // extract accelerations then compute the averages
+        union acc lng;
+
+        lng.hi = sclp->argv[4];
+        lng.lo = sclp->argv[5];
+
+        mnt.acc.lng -= mnt.acc.average.lng[mnt.acc.average.idx];
+        mnt.acc.average.lng[mnt.acc.average.idx] = lng.acc / AVERAGING_NB;
+        mnt.acc.lng += mnt.acc.average.lng[mnt.acc.average.idx];
+
+        union acc lat0;
+        union acc lat1;
+
+        lat0.hi = sclp->argv[0];
+        lat0.lo = sclp->argv[1];
+        lat1.hi = sclp->argv[2];
+        lat1.lo = sclp->argv[3];
+
+        s32 lat_acc = (s32)lat0.acc * lat0.acc + (s32)lat1.acc * lat1.acc;
+
+        mnt.acc.lat -= mnt.acc.average.lat[mnt.acc.average.idx];
+        mnt.acc.average.lat[mnt.acc.average.idx] = lat_acc / AVERAGING_NB;
+        mnt.acc.lat += mnt.acc.average.lat[mnt.acc.average.idx];
+
+        // update average insertion/extraction index
+        mnt.acc.average.idx++;
+        if (mnt.acc.average.idx >= AVERAGING_NB)
+                mnt.acc.average.idx = 0;
+}
+
+
 static PT_THREAD( mnt_check_commands(pt_t* pt) )
 {
-	enum mnt_event ev;
 	u8 swap;
 
 	PT_BEGIN(pt);
 
 	// as long as there are no command
-	PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&mnt.cmds_fifo, &mnt.cmd_fr));
+	PT_WAIT_UNTIL(pt, nnk_fifo_get(&mnt.cmds_fifo, &mnt.cmd_fr));
 
 	// silently ignore incoming response
-	if ( mnt.cmd_fr.resp == 1 ) {
-		scalp_dpt_unlock(&mnt.interf);
+	if ( mnt.cmd_fr.resp == 1 )
 		PT_RESTART(pt);
-	}
 
 	switch (mnt.cmd_fr.cmde) {
-        case SCALP_MINUTTAKEOFF:
-                // generate take-off event
-                PT_WAIT_UNTIL(pt, (ev = MNT_EV_TAKE_OFF) && OK == nnk_fifo_put(&mnt.ev_fifo, &ev) );
+        case SCALP_MINUTEVENT:
+                // translate external event to internal
+                PT_WAIT_UNTIL(pt, mnt_event(&mnt.cmd_fr));
                 break;
 
         case SCALP_MINUTTIMEOUT:
                 mnt_time_out(&mnt.cmd_fr);
+                break;
+
+        case SCALP_MINUTTAKEOFFTHRES:
+                mnt_threshold(&mnt.cmd_fr);
+                break;
+
+        case SCALP_MPUACC:
+                mnt_acc_compute(&mnt.cmd_fr);
                 break;
 
         default:
@@ -817,7 +796,7 @@ static PT_THREAD( mnt_check_commands(pt_t* pt) )
 	mnt.cmd_fr.resp = 1;
 
 	// enqueue it
-	PT_WAIT_UNTIL(pt, OK == nnk_fifo_put(&mnt.out_fifo, &mnt.cmd_fr));
+	PT_WAIT_UNTIL(pt, nnk_fifo_put(&mnt.out_fifo, &mnt.cmd_fr));
 
 	PT_RESTART(pt);
 
@@ -830,13 +809,13 @@ static PT_THREAD( mnt_send_frame(pt_t* pt) )
 	PT_BEGIN(pt);
 
 	// wait until an outgoing frame is available
-	PT_WAIT_UNTIL(pt, OK == nnk_fifo_get(&mnt.out_fifo, &mnt.out_fr));
+	PT_WAIT_UNTIL(pt, nnk_fifo_get(&mnt.out_fifo, &mnt.out_fr));
 
 	// send the frame throught the dispatcher
 	scalp_dpt_lock(&mnt.interf);
 
 	// some retry may be needed
-	PT_WAIT_UNTIL(pt, OK == scalp_dpt_tx(&mnt.interf, &mnt.out_fr));
+	PT_WAIT_UNTIL(pt, scalp_dpt_tx(&mnt.interf, &mnt.out_fr));
 
 	// release the dispatcher
 	scalp_dpt_unlock(&mnt.interf);
@@ -870,8 +849,10 @@ void mnt_init(void)
 
 	// register to dispatcher
 	mnt.interf.channel = 7;
-	mnt.interf.cmde_mask = _CM(SCALP_MINUTTIMEOUT)
-                                | _CM(SCALP_MPUACC);
+	mnt.interf.cmde_mask = SCALP_DPT_CM(SCALP_MINUTTIMEOUT)
+                             | SCALP_DPT_CM(SCALP_MINUTEVENT)
+                             | SCALP_DPT_CM(SCALP_MINUTTAKEOFFTHRES)
+                             | SCALP_DPT_CM(SCALP_MPUACC);
 	mnt.interf.queue = &mnt.cmds_fifo;
 	scalp_dpt_register(&mnt.interf);
 
@@ -883,6 +864,13 @@ void mnt_init(void)
 	// prevent any time-out
 	mnt.time_out = TIME_MAX;
 	mnt.sampling_rate = SAMPLING_START;
+
+        memset(&mnt.acc, 0, sizeof(mnt.acc));
+
+        // prevent any false detection while the thresholds are not set
+        mnt.thresholds.take_off = (s16)0x7fff;
+        mnt.thresholds.apogee.lng = (s16)0x7fff;
+        mnt.thresholds.apogee.lat = (s32)0x7fffffff;
 }
 
 
@@ -909,7 +897,7 @@ void mnt_run(void)
         enum mnt_event ev;
 
         // if there is an event
-        if ( OK == nnk_fifo_get(&mnt.ev_fifo, &ev) ) {
+        if (nnk_fifo_get(&mnt.ev_fifo, &ev)) {
                 // send it to the state machine
                 nnk_stm_event(&mnt.stm, ev);
         }

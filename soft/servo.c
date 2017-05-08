@@ -28,7 +28,7 @@
 // private variables
 //
 
-struct {
+static struct {
 	pt_t pt_out;	// pt for sending thread
 	pt_t pt_in;		// pt for receiving thread
 
@@ -54,7 +54,6 @@ struct {
 
 	struct scalp out_fr;	// frame for the sending thread
 	struct scalp in_fr;	// frame for the cmde thread
-
 } srv;
 
 
@@ -72,7 +71,7 @@ static void srv_cone_on(s8 position)
 	// compare = (position / 90) * 1000 + 3000
 	// the computation shall be modified to fit in s16
 	// the result is sure to fit in u16
-	TMR1_compare_set(TMR1_A, ((s16)position * 100 / 9) + 3000);
+	nnk_tmr1_compare_set(NNK_TMR1_A, ((s16)position * 100 / 9) + 3000);
 }
 
 
@@ -80,7 +79,7 @@ static void srv_cone_on(s8 position)
 static void srv_cone_off(void)
 {
 	// setting the compare value to 0, ensure output pin is driven lo
-	TMR1_compare_set(TMR1_A, 0);
+	nnk_tmr1_compare_set(NNK_TMR1_A, 0);
 }
 
 
@@ -94,7 +93,7 @@ static void srv_aero_on(s8 position)
 	// compare = (position / 90) * 1000 + 3000
 	// the computation shall be modified to fit in s16
 	// the result is sure to fit in u16
-	TMR1_compare_set(TMR1_B, ((s16)position * 100 / 9) + 3000);
+	nnk_tmr1_compare_set(NNK_TMR1_B, ((s16)position * 100 / 9) + 3000);
 }
 
 
@@ -102,7 +101,7 @@ static void srv_aero_on(s8 position)
 static void srv_aero_off(void)
 {
 	// setting the compare value to 0, ensure output pin is driven lo
-	TMR1_compare_set(TMR1_B, 0);
+	nnk_tmr1_compare_set(NNK_TMR1_B, 0);
 }
 
 
@@ -155,7 +154,7 @@ static void srv_drive(u8 servo, u8 sense)
 
 static void srv_cone_save(struct scalp* fr)
 {
-	switch ( fr->argv[2] ) {
+	switch (fr->argv[2]) {
 	case SCALP_SERV_OPEN:		// open position
 		srv.cone.open_pos = fr->argv[3];
 		break;
@@ -174,7 +173,7 @@ static void srv_cone_save(struct scalp* fr)
 
 static void srv_cone_read(struct scalp* fr)
 {
-	switch ( fr->argv[2] ) {
+	switch (fr->argv[2]) {
 	case SCALP_SERV_OPEN:		// open position
 		fr->argv[3] = srv.cone.open_pos;
 		break;
@@ -192,7 +191,7 @@ static void srv_cone_read(struct scalp* fr)
 
 static void srv_aero_save(struct scalp* fr)
 {
-	switch ( fr->argv[2] ) {
+	switch (fr->argv[2]) {
 	case SCALP_SERV_OPEN:		// open position
 		srv.aero.open_pos = fr->argv[3];
 		break;
@@ -211,7 +210,7 @@ static void srv_aero_save(struct scalp* fr)
 
 static void srv_aero_read(struct scalp* fr)
 {
-	switch ( fr->argv[2] ) {
+	switch (fr->argv[2]) {
 	case SCALP_SERV_OPEN:		// open position
 		fr->argv[3] = srv.aero.open_pos;
 		break;
@@ -229,9 +228,9 @@ static void srv_aero_read(struct scalp* fr)
 
 static void srv_position(struct scalp* fr)
 {
-	switch ( fr->argv[0] ) {
+	switch (fr->argv[0]) {
 	case SCALP_SERV_CONE:
-		switch ( fr->argv[1] ) {
+		switch (fr->argv[1]) {
 		case SCALP_SERV_SAVE:	// save
 			srv_cone_save(fr);
 			break;
@@ -248,7 +247,7 @@ static void srv_position(struct scalp* fr)
 		break;
 
 	case SCALP_SERV_AERO:
-		switch ( fr->argv[1] ) {
+		switch (fr->argv[1]) {
 		case SCALP_SERV_SAVE:	// save
 			srv_aero_save(fr);
 			break;
@@ -284,10 +283,6 @@ static PT_THREAD( srv_in(pt_t* pt) )
 	// if it is a response
 	if (srv.in_fr.resp) {
 		// ignore it
-
-		// release the dispatcher
-		scalp_dpt_unlock(&srv.interf);
-
 		// and restart waiting
 		PT_RESTART(pt);
 	}
@@ -359,7 +354,8 @@ void srv_init(void)
 	nnk_fifo_init(&srv.out, &srv.out_buf, OUT_FIFO_SIZE, sizeof(struct scalp));
 
 	srv.interf.channel = 10;
-	srv.interf.cmde_mask = _CM(SCALP_SERVOCMD) | _CM(SCALP_SERVOINFO);
+	srv.interf.cmde_mask = SCALP_DPT_CM(SCALP_SERVOCMD)
+                             | SCALP_DPT_CM(SCALP_SERVOINFO);
 	srv.interf.queue = &srv.in;
 	scalp_dpt_register(&srv.interf);
 
@@ -371,12 +367,12 @@ void srv_init(void)
 	SERVO_DDR |= SERVO_AERO;
 
 	// init the driver, by default, the pwm is zero
-	TMR1_init(TMR1_WITHOUT_INTERRUPT, TMR1_PRESCALER_8, TMR1_WGM_FAST_PWM_ICR1, COM1AB_1010, NULL, NULL);
+	nnk_tmr1_init(NNK_TMR1_WITHOUT_INTERRUPT, NNK_TMR1_PRESCALER_8, NNK_TMR1_WGM_FAST_PWM_ICR1, NNK_COM1AB_1010, NULL, NULL);
 
-	TMR1_compare_set(TMR1_CAPT, 40000);
+	nnk_tmr1_compare_set(NNK_TMR1_CAPT, 40000);
 
 	// launch the pwm generation
-	TMR1_start();
+	nnk_tmr1_start();
 }
 
 

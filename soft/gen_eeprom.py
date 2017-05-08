@@ -1,27 +1,26 @@
 #!/usr/bin/env python3
 
-# format frames
+# format scalps
 #
-# the frames are to be stored in EEPROM
+# the scalps are to be stored in EEPROM
 #
-# the 2 first slots are dedicated to the following events :
-#    - 0 : reset
-#    - 1 : spare
+# the first slot is dedicated to the reset
+# the next ones are for the state machine
 #
-# if there is more than 1 frame used by the event,
-# an container frame is used and the sequence is coded
+# if there is more than 1 scalp used by the event,
+# an container scalp is used and the sequence is coded
 # elsewhere in EEPROM.
 #
 
 import sys
 
-import scalp.scalp as scalp
-import scalp.scalp_frame as scalp_frame
+import scalp
+import scalp_frame
 
 import minut
 
 
-def compute_EEPROM(scalps, module, fd):
+def compute_eeprom(module, fd):
     """compute the content of eeprom memmory for the given module"""
     scls = scalp.Scalps()
     scl = scalp_frame.Scalp()
@@ -70,12 +69,12 @@ def compute_EEPROM(scalps, module, fd):
             fd.write("\n\t//-- start of extended zone --\n")
 
         fd.write("\t//0x%02x (%3d):" % (i * scl_size, i * scl_size))
-        #print mem_map[i]
+        #print(mem_map[i])
         for j in range(scl_size):
-            #print mem_map[i][j],
+            #print(mem_map[i][j]),
             fd.write(" 0x%02x" % mem_map[i][j])
 
-        fd.write(' : %s\n' % mem_map[i].__class__.__name__)
+        fd.write(' : %s\n' % mem_map[i])
         fd.write('\t{ ')
 
         fd.write('.dest = 0x%02x, ' % mem_map[i].dest)
@@ -94,14 +93,12 @@ def compute_EEPROM(scalps, module, fd):
 #----------------------------
 # main
 if __name__ == '__main__':
-    scalps = scalp.Scalps()
-
     fd = open(sys.argv[1], 'w')
     fd.write('#include "dispatcher.h"\n')
     fd.write('\n')
     fd.write('const struct scalp eeprom_scalps[] __attribute__ ((section (".eeprom")))= {\n')
 
-    compute_EEPROM(scalps, minut, fd)
+    compute_eeprom(minut, fd)
 
     fd.write('};')
     fd.close()
